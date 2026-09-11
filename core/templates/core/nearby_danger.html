@@ -1,0 +1,102 @@
+{% load static %}
+<!-- Nearby Danger Alert Widget -->
+<div id="danger-alert" style="display:none;" class="alert alert-danger" role="alert">
+    <h5><i class="fas fa-exclamation-triangle"></i> DANGER NEARBY</h5>
+    <div id="danger-list"></div>
+</div>
+
+<audio id="alert-sound" preload="auto">
+    <source src="{% static 'audio/alert.mp3' %}" type="audio/mpeg">
+</audio>
+
+<script>
+(function () {
+    const ALERT_RADIUS = 100;      // metres
+    const CHECK_INTERVAL = 30000;  // 30 seconds
+    const SOUND_REPEAT = 5 * 60 * 1000; // repeat every 5 min while in danger
+
+    let lastSoundTime = 0;
+    let dangerActive = false;
+
+    function playAlert() {
+        const now = Date.now();
+        if (now - lastSoundTime < SOUND_REPEAT) return;
+        lastSoundTime = now;
+
+        // Sound
+        const audio = document.getElementById('alert-sound');
+        audio.currentTime = 0;
+        audio.play().catch(() => {}); // browsers may block autoplay
+
+        // Vibration (mobile)
+        if (navigator.vibrate) {
+            navigator.vibrate([500, 200, 500, 200, 500]);
+        }
+
+        // Flash
+        let flashes = 0;
+        const alertBox = document.getElementById('danger-alert');
+        const interval = setInterval(() => {
+            alertBox.style.opacity = alertBox.style.opacity === '0.3' ? '1' : '0.3';
+            if (++flashes > 6) {
+                clearInterval(interval);
+                alertBox.style.opacity = '1';
+            }
+        }, 300);
+    }
+
+    function renderAlerts(hazards) {
+        const box = document.getElementById('danger-alert');
+        const list = document.getElementById('danger-list');
+
+        if (hazards.length === 0) {
+            box.style.display = 'none';
+            dangerActive = false;
+            return;
+        }
+
+        dangerActive = true;
+        box.style.display = 'block';
+        list.innerHTML = hazards.map(h => `
+            <div class="mb-2">
+                <strong>${h.type}</strong> — ${h.distance_m} m away
+                <br><small>${h.description}</small>
+                <br><span class="badge bg-dark">Risk: ${h.risk_level}</span>
+            </div>
+        `).join('');
+
+        playAlert();
+    }
+
+    function checkPosition(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        fetch(`{% url "check_nearby_hazards" %}?lat=${lat}&lng=${lng}&radius=${ALERT_RADIUS}`)
+            .then(r => r.json())
+            .then(data => renderAlerts(data.hazards || []))
+            .catch(err => console.error('Nearby check failed:', err));
+    }
+
+    function startWatching() {
+        if (!navigator.geolocation) {
+            console.warn('Geolocation not supported');
+            return;
+        }
+        navigator.geolocation.watchPosition(
+            checkPosition,
+            err => console.warn('GPS error:', err.message),
+            { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+        );
+        // Periodic re-check in case GPS does not update
+        setInterval(() => {
+            navigator.geolocation.getCurrentPosition(checkPosition, () => {});
+        }, CHECK_INTERVAL);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startWatching);
+    } else {
+        startWatching();
+    }
+})();
+</script>
