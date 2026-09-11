@@ -1,0 +1,161 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}VikelaMine - Hazard Map{% endblock %}
+
+{% block extra_head %}
+<style>
+    #map { height: 70vh; width: 100%; border-radius: 8px; }
+    .legend {
+        background: white; padding: 10px; border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-size: 14px;
+    }
+    .legend-item { display: flex; align-items: center; margin-bottom: 4px; }
+    .legend-dot { width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; }
+    .filter-bar {
+        display: flex; gap: 12px; flex-wrap: wrap;
+        margin-bottom: 12px; padding: 12px;
+        background: #1e2530; border-radius: 8px;
+    }
+    .filter-bar label { color: #ccc; font-size: 14px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-warning mb-3">
+        <i class="fas fa-map-marked-alt"></i> Hazard Map
+    </h2>
+
+    <div class="filter-bar">
+        <label><input type="checkbox" id="filter-unresolved" checked> Unresolved</label>
+        <label><input type="checkbox" id="filter-investigating" checked> Investigating</label>
+        <label><input type="checkbox" id="filter-in-progress" checked> In Progress</label>
+        <label><input type="checkbox" id="filter-resolved"> Resolved</label>
+        <label><input type="checkbox" id="filter-sites" checked> Mining Sites</label>
+    </div>
+
+    <div id="map"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let map;
+    let infoWindow;
+    let allHazards = [];
+    let siteMarkers = [];
+    let hazardMarkers = [];
+
+    function initMap() {
+        // Default centre: South Africa
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat: -26.2041, lng: 28.0473 },
+            zoom: 7,
+            mapTypeControl: true,
+            streetViewControl: false,
+        });
+        infoWindow = new google.maps.InfoWindow();
+
+        fetch('{% url "hazard_map_data" %}')
+            .then(r => r.json())
+            .then(data => {
+                allHazards = data.hazards;
+                drawSiteMarkers(data.sites);
+                drawHazardMarkers(allHazards);
+
+                // Fit map to bounds of all markers
+                const bounds = new google.maps.LatLngBounds();
+                data.sites.forEach(s => bounds.extend({ lat: s.latitude, lng: s.longitude }));
+                data.hazards.forEach(h => bounds.extend({ lat: h.latitude, lng: h.longitude }));
+                if (!bounds.isEmpty()) map.fitBounds(bounds);
+            });
+
+        // Filter listeners
+        ['filter-unresolved','filter-investigating','filter-in-progress','filter-resolved']
+            .forEach(id => document.getElementById(id).addEventListener('change', applyFilters));
+        document.getElementById('filter-sites').addEventListener('change', applyFilters);
+    }
+
+    function statusColor(status) {
+        if (status === 'resolved') return '#22c55e';       // green
+        if (status === 'investigating') return '#eab308';  // yellow
+        if (status === 'in_progress') return '#f97316';    // orange
+        return '#ef4444';                                  // red - reported
+    }
+
+    function drawSiteMarkers(sites) {
+        sites.forEach(s => {
+            const marker = new google.maps.Marker({
+                position: { lat: s.latitude, lng: s.longitude },
+                map: map,
+                title: s.name,
+                icon: {
+                    url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                },
+            });
+            const iw = new google.maps.InfoWindow({
+                content: `<div><strong>${s.name}</strong><br>Mining Site<br>Status: ${s.status}</div>`
+            });
+            marker.addListener('click', () => iw.open(map, marker));
+            siteMarkers.push(marker);
+        });
+    }
+
+    function drawHazardMarkers(hazards) {
+        hazards.forEach(h => {
+            const marker = new google.maps.Marker({
+                position: { lat: h.latitude, lng: h.longitude },
+                map: map,
+                title: h.type,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: statusColor(h.status),
+                    fillOpacity: 1,
+                    strokeColor: '#fff',
+                    strokeWeight: 2,
+                },
+            });
+            const photoHtml = h.photo_url
+                ? `<br><img src="${h.photo_url}" style="max-width:200px;border-radius:4px;">`
+                : '';
+            const iw = new google.maps.InfoWindow({
+                content: `
+                    <div style="color:#111;max-width:240px;">
+                        <strong>${h.type}</strong><br>
+                        <small>${h.description}</small><br>
+                        Status: <b>${h.status}</b><br>
+                        Risk: ${h.risk_level}<br>
+                        Site: ${h.mining_site}<br>
+                        Reported: ${h.created_at}
+                        ${photoHtml}
+                    </div>`
+            });
+            marker.addListener('click', () => iw.open(map, marker));
+            marker._hazard = h;
+            hazardMarkers.push(marker);
+        });
+    }
+
+    function applyFilters() {
+        const show = {
+            unresolved: document.getElementById('filter-unresolved').checked,
+            investigating: document.getElementById('filter-investigating').checked,
+            in_progress: document.getElementById('filter-in-progress').checked,
+            resolved: document.getElementById('filter-resolved').checked,
+            sites: document.getElementById('filter-sites').checked,
+        };
+        hazardMarkers.forEach(m => {
+            const s = m._hazard.status;
+            const visible = show[s] === true;
+            m.setVisible(visible);
+        });
+        siteMarkers.forEach(m => m.setVisible(show.sites));
+    }
+</script>
+
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initMap">
+</script>
+{% endblock %}
