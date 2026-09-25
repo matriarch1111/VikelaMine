@@ -73,7 +73,7 @@ USE_TZ = True
 
 # Static & Media - THIS FIXES YOUR 404
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # Avoid placing STATIC_ROOT at BASE_DIR / 'static'
+# STATIC_ROOT = BASE_DIR / 'staticfiles'  # Avoid placing STATIC_ROOT at BASE_DIR / 'static'
 
 # Tells Django where to look for source static files in development
 STATICFILES_DIRS = [
@@ -81,12 +81,13 @@ STATICFILES_DIRS = [
 ]
 
 # Enable compression and caching (Django 4.2+)
+# For Django 4.2+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",  # Keeps compression, but doesn't crash on missing CSS assets
     },
 }
 
