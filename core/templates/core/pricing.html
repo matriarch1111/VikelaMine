@@ -1,0 +1,12 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<section class="hero" style="padding:70px 0"><div class="wrap"><h1 style="font-size:48px">Pricing</h1><p class="sub">Affordable for small-scale mining — one price per licence, everything included.</p></div></section>
+<section class="section"><div class="wrap"><div class="grid grid-3">
+  <div class="card"><h3 style="margin-top:0">Small team</h3><div style="font-size:34px;font-weight:900">R45<span style="font-size:14px;color:var(--muted)">/licence/mo</span></div>
+    <p style="color:var(--muted);font-size:14px">Up to 50 users. Full features.</p><div style="height:16px"></div><a href__="{% url 'login' %}" class="btn btn-red" style="width:100%;justify-content:center">Sign up</a></div>
+  <div class="card" style="border-color:var(--red)"><h3 style="margin-top:0;color:var(--red)">Most popular</h3><div style="font-size:34px;font-weight:900">R35<span style="font-size:14px;color:var(--muted)">/licence/mo</span></div>
+    <p style="color:var(--muted);font-size:14px">50–500 users. Better rate.</p><div style="height:16px"></div><a href__="{% url 'login' %}" class="btn btn-red" style="width:100%;justify-content:center">Sign up</a></div>
+  <div class="card"><h3 style="margin-top:0">Enterprise</h3><div style="font-size:34px;font-weight:900">Contact</div>
+    <p style="color:var(--muted);font-size:14px">500+ users. Dedicated support & SLA.</p><div style="height:16px"></div><a href__="{% url 'login' %}" class="btn btn-out" style="width:100%;justify-content:center">Book a demo</a></div>
+</div></div></section>
+{% endblock %}

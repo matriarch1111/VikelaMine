@@ -1,0 +1,11 @@
+{% extends 'core/base.html' %}{% block content %}
+<div class="max-w-6xl mx-auto p-6 grid md:grid-cols-3 gap-4">
+<div class="md:col-span-2 bg-white border p-4">
+<h2 class="font-bold">Incident Summary by Type</h2><p class="text-xs mt-2">Fall of Ground: 12 | Gas: 8 | Equipment: 5 | Near Miss: 14</p>
+<h3 class="font-bold mt-6 text-sm">Broken Down by Site & Location</h3>
+<div class="text-xs mt-2 border-b py-2">Shaft 2 - Level 4 - Cactus A <br><div class="w-full h-2 bg-gray-200 mt-1"><div class="h-2 bg-red-600 w-[40%]"></div></div>Fixing 40% - Safe in ~4 hrs</div>
+<div class="text-xs mt-2 border-b py-2">Stope 7 - Level 2 <br><div class="w-full h-2 bg-gray-200 mt-1"><div class="h-2 bg-green-600 w-[100%]"></div></div>Fixed - Safe to work</div>
+<a href="/reports/" class="mt-6 inline-block bg-black text-white px-6 py-2 text-xs">Track Progress →</a>
+</div>
+<div class="bg-white border p-4"><h3 class="font-bold text-sm">Live Feed (All Workers See)</h3><div class="text-xs mt-3 space-y-2"><p>🔴 JD - Fall - Shaft 2 Level 4 - 2 min ago</p><p>🟡 KM - Gas - Stope 7 - 14 min ago</p><p>🟢 SM - Near Miss - Level 1 - 30 min ago</p></div></div>
+</div>{% endblock %}

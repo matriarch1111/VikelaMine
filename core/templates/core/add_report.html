@@ -1,0 +1,10 @@
+{% extends 'core/base.html' %}{% block content %}
+<div class="max-w-4xl mx-auto p-6"><h2 class="font-black text-xl">New Report - Choose Tile</h2>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+<a href="/reports/" class="bg-black text-white p-6 h-28 font-black">REPORT</a>
+<a href="/reports/" class="bg-zinc-800 text-white p-6 h-28 font-black">DANGER</a>
+<a href="/sos-alert/" class="bg-red-600 text-white p-6 h-28 font-black border-2 border-black">SOS</a>
+<a href="/reports/" class="bg-yellow-400 text-black p-6 h-28 font-black">NEAR DANGER</a>
+</div>
+<p class="text-xs mt-4 text-gray-500">After choosing tile, form with photo, type, severity, location, description saves to reports page.</p>
+</div>{% endblock %}

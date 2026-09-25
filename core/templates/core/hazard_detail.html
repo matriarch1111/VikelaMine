@@ -1,0 +1,13 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="appbar"><a href__="{% url 'dashboard' %}" class="link">← Dashboard</a><b>{{ h.get_hazard_type_display }} #{{ h.id }}</b>
+  <a href__="{% url 'resolve_hazard' h.id %}" class="btn btn-red">Resolve →</a></div>
+<div class="wrap" style="padding:30px 24px">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between"><span class="pill {{ h.status }}">{{ h.get_status_display }}</span><span class="pill {{ h.priority }}">{{ h.get_priority_display }}</span></div>
+    {% if h.photo %}<img class="photo" src="{{ h.photo.url }}" style="margin:14px 0">{% endif %}
+    <p style="color:#fff;font-size:15px">{{ h.description }}</p>
+    <p style="color:var(--muted);font-size:13px">📍 {{ h.latitude|floatformat:4 }}, {{ h.longitude|floatformat:4 }} · 🕐 {{ h.reported_at|date:"d M Y H:i" }} · 👤 {{ h.reported_by|default:"—" }}</p>
+  </div>
+</div>
+{% endblock %}

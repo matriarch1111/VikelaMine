@@ -1,0 +1,66 @@
+{% extends 'core/base_app.html' %}
+{% block app_content %}
+<div class="bg-white min-h-screen p-3">
+  <!-- 4 TILES like Jobsafe but with YOUR hazard types -->
+  <div class="grid grid-cols-2 gap-3">
+    <button onclick="openReport('fall')" class="bg-red-600 text-white p-5 text-left h-32"><i class="fa-solid fa-helmet-safety text-2xl"></i><p class="font-black mt-2 leading-tight">FALL OF GROUND REPORT</p></button>
+    <button onclick="openReport('gas')" class="bg-black text-white p-5 text-left h-32"><i class="fa-solid fa-triangle-exclamation text-2xl"></i><p class="font-black mt-2 leading-tight">GAS / AIR REPORT</p></button>
+    <button onclick="openReport('equipment')" class="bg-green-600 text-white p-5 text-left h-32"><i class="fa-solid fa-screwdriver-wrench text-2xl"></i><p class="font-black mt-2 leading-tight">EQUIPMENT FAILURE</p></button>
+    <button onclick="openReport('unsafe')" class="bg-yellow-400 text-white p-5 text-left h-32"><i class="fa-solid fa-person-falling text-2xl"></i><p class="font-black mt-2 leading-tight">NEAR MISS / UNSAFE</p></button>
+  </div>
+
+  <div class="mt-6">
+    <h3 class="font-bold">My Activity</h3>
+    <div class="text-sm mt-2 space-y-2 border-t pt-2">
+      <p>Your last report: <span class="text-green-600 font-bold">2 Days ago</span></p>
+      <p>Open Reports: <span class="text-red-600 font-bold">3</span></p>
+      <p class="text-xs text-gray-500">Recent: Gas leak Level 4, Loose rock Shaft 2</p>
+    </div>
+  </div>
+
+  <div class="mt-6 bg-white border p-3">
+    <div class="flex justify-between text-sm"><span class="font-bold">By category<br><span class="text-[10px] text-gray-500">Last 30 days · {{ total }} total</span></span><span class="text-[10px]"><span class="border px-2">30d</span> <span class="border px-2">90d</span> <span class="border px-2">YTD</span></span></div>
+    <canvas id="donut" height="180"></canvas>
+    <div class="text-xs mt-2 space-y-1">
+      <div class="flex justify-between"><span>🔴 Fall of Ground</span><span>20 ↑19</span></div>
+      <div class="flex justify-between"><span>🟡 Gas / Air</span><span>9 ↑9</span></div>
+      <div class="flex justify-between"><span>⚫ Equipment</span><span>14 ↑14</span></div>
+      <div class="flex justify-between"><span>🟢 Unsafe</span><span>11 ↑11</span></div>
+    </div>
+  </div>
+
+  <div class="mt-4 bg-white border p-3">
+    <p class="font-bold text-sm">Site breakdown<br><span class="text-[10px] text-gray-500">This week · 2 shafts</span></p>
+    <div class="mt-3 text-xs">
+      <p>Shaft 2 - Level 4 <span class="float-right font-bold">2</span></p><div class="w-full h-2 bg-gray-100 mt-1"><div class="h-2 bg-red-600 w-[60%]"></div></div>
+      <p class="mt-3">Shaft 1 - Stope 7 <span class="float-right font-bold">4</span></p><div class="w-full h-2 bg-gray-100 mt-1"><div class="h-2 bg-red-600 w-[90%]"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- GUIDED CAPTURE MODAL - like Jobsafe video -->
+<div id="report-modal" class="hidden fixed inset-0 bg-black/80 z-[60] p-4 overflow-auto">
+  <div class="bg-white max-w-[420px] mx-auto p-4 rounded">
+    <div class="flex justify-between"><h3 class="font-bold" id="modal-title">Report</h3><button onclick="this.closest('#report-modal').classList.add('hidden')">✕</button></div>
+    <form method="POST" action="/report-hazard/" enctype="multipart/form-data" class="mt-4 space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="hazard_type" id="h-type">
+      <input type="hidden" name="latitude" id="lat"><input type="hidden" name="longitude" id="lng">
+      <p class="text-xs">Guided capture - step by step so nothing is missed</p>
+      <input name="location_name" placeholder="Cactus Location / Shaft / Level (exact place)" class="w-full border p-2 text-sm" required>
+      <button type="button" onclick="captureGPS()" class="w-full bg-blue-600 text-white py-2 text-xs"><i class="fa-solid fa-location-crosshairs"></i> Capture GPS Location</button>
+      <p id="gps-txt" class="text-[10px] text-green-600"></p>
+      <textarea name="description" placeholder="Describe hazard - what danger?" class="w-full border p-2 text-sm h-20" required></textarea>
+      <input type="file" name="photo" accept="image/*" capture="environment" class="text-xs">
+      <select name="language" class="w-full border p-2 text-xs"><option>English</option><option>Afrikaans</option><option>Setswana</option><option>isiZulu</option></select>
+      <button class="w-full bg-black text-white py-3 font-bold">Submit - Works offline, syncs later</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function openReport(t){document.getElementById('h-type').value=t; document.getElementById('modal-title').innerText=t.toUpperCase()+" REPORT"; document.getElementById('report-modal').classList.remove('hidden')}
+function captureGPS(){navigator.geolocation.getCurrentPosition(p=>{document.getElementById('lat').value=p.coords.latitude; document.getElementById('lng').value=p.coords.longitude; document.getElementById('gps-txt').innerText="📍 Captured: "+p.coords.latitude.toFixed(5)+","+p.coords.longitude.toFixed(5)})}
+new Chart(document.getElementById('donut'),{type:'doughnut',data:{labels:['Fall','Gas','Equipment','Unsafe'],datasets:[{data:[20,9,14,11],backgroundColor:['#dc2626','#eab308','#111827','#16a34a']}]},options:{plugins:{legend:{display:false}}}})
+</script>
+{% endblock %}

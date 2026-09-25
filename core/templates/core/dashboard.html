@@ -1,0 +1,111 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="flex min-h-screen relative" style="background: linear-gradient(rgba(246,241,231,0.92), rgba(246,241,231,0.92)), url('/static/core/img/tunnel-bg.jpg'); background-size: cover; background-position: center; background-attachment: fixed;">
+
+    <!-- Sidebar like in video but now beige/white like slide -->
+    <div class="w-64 bg-white border-r border-[#E8E0D1] p-4 hidden md:block shadow-sm">
+        <button onclick="document.getElementById('hazard-modal').classList.remove('hidden')" class="w-full bg-[#D95D26] text-white py-3 font-bold mb-6 rounded-[8px] hover:bg-[#C25120]">+ Report Hazard</button>
+        <ul class="text-sm space-y-3 text-[#1E1E1E]">
+            <li class="font-bold text-[#D95D26]"><i class="fa-solid fa-chart-line mr-2"></i> Dashboard</li>
+            <li class="text-[#6B6B6B] hover:text-[#1E1E1E] cursor-pointer">Reports ({{ hazards|length|default:"0" }})</li>
+            <li class="text-[#6B6B6B] hover:text-[#1E1E1E] cursor-pointer">Company Documents</li>
+            <li class="text-[#6B6B6B] hover:text-[#1E1E1E] cursor-pointer">System Settings</li>
+            <li class="text-[#6B6B6B] hover:text-[#1E1E1E] cursor-pointer">Manage Users</li>
+        </ul>
+        <div class="mt-10 p-3 bg-[#F6F1E7] rounded-[10px] border border-[#E8E0D1]">
+            <p class="text-xs font-bold text-[#1E1E1E]">Hazard Types</p>
+            <div class="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                <span class="bg-white border border-[#E8E0D1] p-1.5 rounded text-[#1E1E1E]">Fall of Ground</span>
+                <span class="bg-white border border-[#E8E0D1] p-1.5 rounded text-[#1E1E1E]">Gas / Air</span>
+                <span class="bg-white border border-[#E8E0D1] p-1.5 rounded text-[#1E1E1E]">Equipment</span>
+                <span class="bg-[#1A1F26] text-white p-1.5 rounded">Unsafe Act</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div class="flex-1 p-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-[12px] border border-[#E8E0D1] shadow-sm"><p class="text-xs text-[#6B6B6B]">Open Hazards</p><p class="text-2xl font-bold text-[#1E1E1E]">{{ open_count|default:"3" }}</p></div>
+            <div class="bg-white p-4 rounded-[12px] border border-[#E8E0D1] shadow-sm"><p class="text-xs text-[#6B6B6B]">Resolved Today</p><p class="text-2xl font-bold text-[#2E7D32]">{{ resolved|default:"1" }}</p></div>
+            <div class="bg-white p-4 rounded-[12px] border border-[#E8E0D1] shadow-sm"><p class="text-xs text-[#6B6B6B]">SOS Alerts</p><p class="text-2xl font-bold text-[#D95D26]">{{ sos_count|default:"0" }}</p></div>
+            <div class="bg-white p-4 rounded-[12px] border border-[#E8E0D1] shadow-sm"><p class="text-xs text-[#6B6B6B]">Active Miners</p><p class="text-2xl font-bold text-[#1E1E1E]">{{ users_count|default:"24" }}</p></div>
+        </div>
+
+        <!-- Chart area like video -->
+        <div class="bg-white p-4 rounded-[12px] border border-[#E8E0D1] shadow-sm mb-6">
+            <p class="text-sm font-bold mb-2 text-[#1E1E1E]">Hazard Trend & Location Map</p>
+            <div class="h-48 bg-[#F6F1E7] rounded-[8px] flex items-center justify-center text-xs text-[#6B6B6B] border border-dashed border-[#E8E0D1]">
+                Chart will show here - hazards by date / cactus location tracking [Lat, Lng]
+            </div>
+        </div>
+
+        <!-- Reports Table like video -->
+        <div class="bg-white rounded-[12px] border border-[#E8E0D1] shadow-sm overflow-hidden">
+            <div class="p-3 border-b border-[#E8E0D1] flex justify-between bg-[#FFFCF5]"><p class="font-bold text-sm text-[#1E1E1E]">Reports - Hazard Register</p><span class="text-xs text-[#B8A082]">Simple. Powerful. Affordable.</span></div>
+            <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+                <tr class="bg-[#F6F1E7] text-[#6B6B6B]"><th class="p-3 text-left">ID</th><th>Type</th><th>Location [GPS]</th><th>Description</th><th>Status</th></tr>
+                {% for h in hazards %}
+                <tr class="border-b border-[#E8E0D1]"><td class="p-3">{{ h.id }}</td><td>{{ h.get_type_display }}</td><td>{{ h.latitude }}, {{ h.longitude }}</td><td>{{ h.description|truncatechars:50 }}</td><td><span class="bg-[#F6F1E7] px-2 py-1 rounded text-[#1E1E1E]">{{ h.status }}</span></td></tr>
+                {% empty %}
+                <tr><td colspan="5" class="p-8 text-center text-[#9A9A9A]">No hazards reported yet. Click Report Hazard to add one like in video</td></tr>
+                {% endfor %}
+            </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL - now matching slide colors -->
+<div id="hazard-modal" class="hidden fixed inset-0 bg-[#1A1F26]/80 backdrop-blur-sm z-[10000] flex items-center justify-center p-4">
+    <div class="bg-[#FFFCF5] w-full max-w-2xl rounded-[16px] shadow-xl p-6 border border-[#E8E0D1]">
+        <div class="flex justify-between"><h3 class="font-bold text-[#1E1E1E]">Report Hazard / Danger</h3><button onclick="this.closest('#hazard-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-[#F6F1E7] text-[#6B6B6B]">X</button></div>
+
+        <!-- 4 colored tiles like video but now orange + white like slide -->
+        <p class="text-xs mt-4 mb-2 text-[#6B6B6B]">Select Hazard Type:</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <button type="button" class="hazard-type bg-white border-2 border-[#E8E0D1] hover:border-[#D95D26] text-[#1E1E1E] p-4 text-xs font-bold rounded-[10px] transition" data-type="fall">FALL OF GROUND</button>
+            <button type="button" class="hazard-type bg-white border-2 border-[#E8E0D1] hover:border-[#D95D26] text-[#1E1E1E] p-4 text-xs font-bold rounded-[10px] transition" data-type="gas">GAS / AIR QUALITY</button>
+            <button type="button" class="hazard-type bg-white border-2 border-[#E8E0D1] hover:border-[#D95D26] text-[#1E1E1E] p-4 text-xs font-bold rounded-[10px] transition" data-type="equipment">EQUIPMENT FAILURE</button>
+            <button type="button" class="hazard-type bg-white border-2 border-[#E8E0D1] hover:border-[#D95D26] text-[#1E1E1E] p-4 text-xs font-bold rounded-[10px] transition" data-type="unsafe">UNSAFE BEHAVIOR</button>
+        </div>
+
+        <form method="POST" action="{% url 'report_hazard' %}" enctype="multipart/form-data" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="hazard_type" id="selected-type" required>
+            <input type="hidden" name="latitude" id="lat">
+            <input type="hidden" name="longitude" id="lng">
+
+            <div class="grid grid-cols-2 gap-3">
+                <input name="location_name" placeholder="Shaft / Level / Cactus Location (e.g. Shaft 2, Level 4)" class="border border-[#E8E0D1] bg-white p-3 text-sm w-full rounded-[8px] focus:border-[#D95D26] outline-none" required>
+                <button type="button" onclick="captureLocation()" class="bg-[#1A1F26] text-white text-xs p-2 rounded-[8px]"><i class="fa-solid fa-location-dot"></i> Capture GPS Location</button>
+            </div>
+            <p id="loc-status" class="text-[10px] text-green-600"></p>
+            <textarea name="description" placeholder="Describe the danger - what did you see?" class="border border-[#E8E0D1] bg-white p-3 text-sm w-full h-24 rounded-[8px] focus:border-[#D95D26] outline-none" required></textarea>
+            <input type="file" name="photo" accept="image/*" capture="environment" class="text-xs text-[#6B6B6B]">
+            <button class="w-full bg-[#D95D26] text-white py-3 font-bold rounded-[8px] hover:bg-[#C25120]">Submit Hazard Report</button>
+        </form>
+    </div>
+</div>
+
+<script>
+let selected = null;
+document.querySelectorAll('.hazard-type').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.hazard-type').forEach(x=>{
+      x.classList.remove('bg-[#D95D26]', 'text-white', 'border-[#D95D26]');
+      x.classList.add('bg-white', 'text-[#1E1E1E]');
+    });
+    b.classList.remove('bg-white', 'text-[#1E1E1E]');
+    b.classList.add('bg-[#D95D26]', 'text-white', 'border-[#D95D26]');
+    document.getElementById('selected-type').value = b.dataset.type;
+});
+function captureLocation(){
+    navigator.geolocation.getCurrentPosition(p=>{
+        document.getElementById('lat').value = p.coords.latitude;
+        document.getElementById('lng').value = p.coords.longitude;
+        document.getElementById('loc-status').innerText = "📍 Location captured: " + p.coords.latitude.toFixed(5) + ", " + p.coords.longitude.toFixed(5);
+    });
+}
+</script>
+{% endblock %}

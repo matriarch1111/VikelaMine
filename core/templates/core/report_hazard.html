@@ -1,0 +1,32 @@
+from.utils import get_exif_data
+from django.core.files.storage import default_storage
+
+def report_hazard(request):
+    if request.method == 'POST':
+        photo = request.FILES.get('photo')
+        lat = request.POST.get('latitude')
+        lng = request.POST.get('longitude')
+
+        # if no manual lat/lng, try get from photo EXIF
+        if (not lat or not lng) and photo:
+            temp_path = default_storage.save('tmp/'+photo.name, photo)
+            full_path = default_storage.path(temp_path)
+            exif_lat, exif_lng = get_exif_data(full_path)
+            if exif_lat:
+                lat, lng = exif_lat, exif_lng
+            # keep the file for model save
+            default_storage.delete(temp_path)
+            photo.seek(0) # reset file pointer
+
+        hazard = HazardReport.objects.create(
+            user=request.user,
+            description=request.POST.get('description'),
+            hazard_type=request.POST.get('hazard_type'),
+            latitude=lat,
+            longitude=lng,
+            photo=photo,
+            risk_level='High'
+        )
+        return redirect('maps')
+
+    return render(request, 'core/report_hazard.html')

@@ -1,0 +1,47 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div style="padding:30px; text-align:center;">
+  <h2>🚨 Live Safety Monitor</h2>
+  <p id="status">Checking location...</p>
+  <div id="flash-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:red; z-index:9999; opacity:0.8;"></div>
+  <div id="alerts"></div>
+</div>
+
+<script>
+const FIVE_MIN_RADIUS = 500; // meters = ~5 min walk. Put 4000 if you want driving
+
+function speakAlert(text){
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.rate = 1; msg.pitch = 1.2; msg.volume = 1;
+    window.speechSynthesis.speak(msg);
+}
+
+function flashLight(){
+    const flash = document.getElementById('flash-overlay');
+    let count=0;
+    const interval = setInterval(()=>{
+        flash.style.display = flash.style.display==='none'? 'block' : 'none';
+        if(++count>10){ clearInterval(interval); flash.style.display='none'; if(navigator.vibrate) navigator.vibrate([1000,200,1000]); }
+    }, 200);
+}
+
+function checkPosition(pos){
+    const lat = pos.coords.latitude; const lng = pos.coords.longitude;
+    fetch(`/check-nearby-hazards/?lat=${lat}&lng=${lng}&radius=${FIVE_MIN_RADIUS}`)
+   .then(r=>r.json()).then(data=>{
+        if(data.hazards.length>0){
+            const closest = data.hazards[0];
+            document.getElementById('status').innerHTML = `⚠️ DANGER ${closest.distance}m ahead!`;
+            document.getElementById('alerts').innerHTML = `<div style="background:red;color:white;padding:20px;border-radius:12px;font-size:20px;">${closest.type} - ${closest.distance}m away</div>`;
+            flashLight();
+            speakAlert(`Warning! ${closest.type} hazard ${Math.round(closest.distance)} meters ahead. Please be careful.`);
+        } else {
+            document.getElementById('status').innerHTML = `Safe - No hazards within 5 minutes (${FIVE_MIN_RADIUS}m)`;
+        }
+    });
+}
+
+// watch continuously
+navigator.geolocation.watchPosition(checkPosition, err=>console.log(err), {enableHighAccuracy:true, maximumAge:0, timeout:5000});
+</script>
+{% endblock %}

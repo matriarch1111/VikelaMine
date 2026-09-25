@@ -1,0 +1,16 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<section class="hero" style="padding:70px 0"><div class="wrap"><h1 style="font-size:48px">Features</h1><p class="sub">Everything a mining team needs to go from hazard to insight.</p></div></section>
+<section class="section"><div class="wrap"><div class="grid grid-3">
+  {% for f in features %}{% endfor %}
+  <div class="card"><div class="ic">📸</div><h3>One-tap capture</h3><p>Log a hazard before you've left the scene.</p></div>
+  <div class="card"><div class="ic">📍</div><h3>Auto GPS & timestamp</h3><p>Every report anchored in time and place.</p></div>
+  <div class="card"><div class="ic">🔔</div><h3>Real-time alerts</h3><p>Supervisors notified the moment it happens.</p></div>
+  <div class="card"><div class="ic">🧾</div><h3>Audit trail</h3><p>Immutable, timestamped record for every action.</p></div>
+  <div class="card"><div class="ic">🗺️</div><h3>Hazard map</h3><p>See unresolved vs resolved hazards across all sites.</p></div>
+  <div class="card"><div class="ic">🚨</div><h3>Panic button</h3><p>Broadcast a live emergency alert with location.</p></div>
+  <div class="card"><div class="ic">⚠️</div><h3>Nearby danger</h3><p>Warns workers within 100m of an unresolved hazard.</p></div>
+  <div class="card"><div class="ic">🌍</div><h3>Multilingual</h3><p>English, isiZulu, Setswana, Afrikaans, Xitsonga.</p></div>
+  <div class="card"><div class="ic">📊</div><h3>Dashboard analytics</h3><p>Spot patterns before they become incidents.</p></div>
+</div></section>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="appbar"><b>👨‍💻 Administrator</b><div style="display:flex;gap:10px"><a href__="{% url 'admin_users' %}" class="btn btn-ghost">Users</a><a href__="{% url 'admin_sites' %}" class="btn btn-ghost">Sites</a></div></div>
+<div class="wrap" style="padding:30px 24px">
+  <div class="grid grid-3">
+    <div class="card"><div style="color:var(--muted);font-size:12px;text-transform:uppercase">Users</div><div style="font-size:34px;font-weight:900">{{ users|length }}</div></div>
+    <div class="card"><div style="color:var(--muted);font-size:12px;text-transform:uppercase">Sites</div><div style="font-size:34px;font-weight:900">{{ sites|length }}</div></div>
+    <div class="card"><div style="color:var(--muted);font-size:12px;text-transform:uppercase">Open hazards</div><div style="font-size:34px;font-weight:900;color:var(--red)">—</div></div>
+  </div>
+</div>
+{% endblock %}
