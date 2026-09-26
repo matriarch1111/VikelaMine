@@ -273,3 +273,120 @@ class AlertLog(models.Model):
 
     def __str__(self):
         return f"{self.user.email} warned about Hazard #{self.hazard.id}"
+
+
+class SyncQueue(models.Model):
+    """Tracks offline create/update/delete actions that must be replayed when connectivity returns."""
+
+    class Operation(models.TextChoices):
+        CREATE = "CREATE", "Create"
+        UPDATE = "UPDATE", "Update"
+        DELETE = "DELETE", "Delete"
+
+    class Status(models.TextChoices):
+        QUEUED = "QUEUED", "Queued"
+        SYNCING = "SYNCING", "Syncing"
+        SYNCED = "SYNCED", "Synced"
+        FAILED = "FAILED", "Failed"
+
+    entity_type = models.CharField(max_length=100)
+    entity_id = models.CharField(max_length=100, blank=True, default="")
+    operation = models.CharField(
+        max_length=20, choices=Operation.choices, default=Operation.UPDATE
+    )
+    payload = models.JSONField(default=dict, blank=True)
+    device_id = models.CharField(max_length=100, blank=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.QUEUED
+    )
+    version = models.PositiveIntegerField(default=1)
+    last_seen_version = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.entity_type}:{self.entity_id or 'new'} ({self.operation})"
+
+
+class SyncConflict(models.Model):
+    """Stores conflicts detected during offline sync reconciliation."""
+
+    object_type = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=100)
+    local_version = models.PositiveIntegerField(default=0)
+    server_version = models.PositiveIntegerField(default=0)
+    conflict_type = models.CharField(max_length=50, default="VERSION_MISMATCH")
+    local_payload = models.JSONField(default=dict, blank=True)
+    server_payload = models.JSONField(default=dict, blank=True)
+    resolution = models.CharField(max_length=50, default="PENDING")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.object_type}:{self.object_id} conflict"
+
+
+class LocalizedContent(models.Model):
+    """Stores translated values for dynamic content and user-facing strings."""
+
+    key = models.CharField(max_length=255)
+    language = models.CharField(max_length=10, default="en")
+    value = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("key", "language")
+        ordering = ["key", "language"]
+
+    def __str__(self):
+        return f"{self.key} [{self.language}]"
+
+
+class AIJob(models.Model):
+    """Tracks AI inference jobs asynchronously for scalability and traceability."""
+
+    class Status(models.TextChoices):
+        QUEUED = "QUEUED", "Queued"
+        RUNNING = "RUNNING", "Running"
+        COMPLETED = "COMPLETED", "Completed"
+        FAILED = "FAILED", "Failed"
+
+    model_name = models.CharField(max_length=100, default="hazard-classifier")
+    model_version = models.CharField(max_length=50, default="v1")
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.QUEUED
+    )
+    input_payload = models.JSONField(default=dict, blank=True)
+    result_payload = models.JSONField(default=dict, blank=True, null=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_jobs",
+    )
+    related_hazard = models.ForeignKey(
+        Hazard,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ai_jobs",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.model_name} ({self.status})"
