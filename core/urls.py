@@ -6,6 +6,7 @@ from .views import (
     RegisterView, LoginView, MeView, ChangePasswordView,
     UserViewSet, MiningSiteViewSet, HazardViewSet,
     HazardResponseViewSet, ChecklistViewSet, NotificationViewSet,
+    UpdateAlertPreferencesView, AlertLogViewSet,
 )
 
 router = DefaultRouter()
@@ -15,6 +16,7 @@ router.register("hazards", HazardViewSet, basename="hazard")
 router.register("responses", HazardResponseViewSet, basename="response")
 router.register("checklists", ChecklistViewSet, basename="checklist")
 router.register("notifications", NotificationViewSet, basename="notification")
+router.register("alert-logs", AlertLogViewSet, basename="alert-log")
 
 urlpatterns = [
     path("auth/register/", RegisterView.as_view()),
@@ -22,5 +24,6 @@ urlpatterns = [
     path("auth/refresh/", TokenRefreshView.as_view()),
     path("auth/me/", MeView.as_view()),
     path("auth/change-password/", ChangePasswordView.as_view()),
+    path("auth/alert-preferences/", UpdateAlertPreferencesView.as_view()),
     path("", include(router.urls)),
 ]

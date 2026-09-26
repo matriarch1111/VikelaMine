@@ -33,6 +33,20 @@ class User(AbstractUser):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Alert preferences (Option A: distance threshold)
+    alert_method = models.CharField(
+        max_length=20,
+        choices=[
+            ("VOICE", "Voice Alert"),
+            ("FLASHLIGHT", "Flashlight"),
+            ("BOTH", "Both"),
+            ("VIBRATION", "Vibration Only"),
+        ],
+        default="VOICE",
+    )
+    alert_radius_m = models.PositiveIntegerField(default=200)
+    alerts_enabled = models.BooleanField(default=True)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
@@ -237,3 +251,25 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"-> {self.recipient.email}: {self.title}"
+
+
+class AlertLog(models.Model):
+    """Logs every time a user is warned about a nearby hazard."""
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="alert_logs"
+    )
+    hazard = models.ForeignKey(
+        Hazard, on_delete=models.CASCADE, related_name="alert_logs"
+    )
+    distance_m = models.FloatField()
+    alert_method = models.CharField(max_length=20)
+    user_latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    user_longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.email} warned about Hazard #{self.hazard.id}"

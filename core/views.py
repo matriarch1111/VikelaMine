@@ -14,7 +14,7 @@ from .serializers import (
     UserSerializer, RegisterSerializer, ChangePasswordSerializer,
     MiningSiteSerializer, HazardListSerializer, HazardDetailSerializer,
     HazardCreateSerializer, HazardResponseSerializer, ChecklistSerializer,
-    NotificationSerializer,
+    NotificationSerializer,  AlertLogSerializer,
 )
 from .permissions import (
     IsAdminRole, IsSupervisorOrAdmin, CanChangeHazardStatus,
@@ -316,22 +316,45 @@ class HazardViewSet(viewsets.ModelViewSet):
             )
 
         return Response(HazardDetailSerializer(hazard).data)
-
     @action(detail=False, methods=["get"])
     def nearby(self, request):
-        """Find unresolved hazards near a lat/lng within a radius (metres)."""
+        """
+        Option A: return unresolved hazards within the user's alert_radius_m.
+
+        Query params:
+          lat      (required)  – user's current latitude
+          lng      (required)  – user's current longitude
+          radius   (optional)  – override the user's saved radius
+
+        Response:
+          {
+            "user": { alert_method, alert_radius_m, alerts_enabled },
+            "count": N,
+            "hazards": [ { ...hazard..., "distance_m": 130.4 }, ... ]
+          }
+        """
         from math import radians, sin, cos, sqrt, atan2
+        from .models import AlertLog
+
+        user = request.user
 
         try:
             lat = float(request.query_params.get("lat"))
             lng = float(request.query_params.get("lng"))
-            radius = float(request.query_params.get("radius", 200))
         except (TypeError, ValueError):
             return Response(
-                {"detail": "Provide lat, lng, and optional radius (metres)."},
+                {"detail": "Provide numeric lat and lng query parameters."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Radius: user default, or query override
+        radius_param = request.query_params.get("radius")
+        try:
+            radius = float(radius_param) if radius_param else float(user.alert_radius_m)
+        except (TypeError, ValueError):
+            radius = 200.0
+
+        # Haversine distance in metres
         def haversine(lat1, lon1, lat2, lon2):
             R = 6371000
             dlat = radians(lat2 - lat1)
@@ -342,19 +365,59 @@ class HazardViewSet(viewsets.ModelViewSet):
             )
             return 2 * R * atan2(sqrt(a), sqrt(1 - a))
 
-        qs = Hazard.objects.exclude(status=Hazard.Status.RESOLVED)
-        results = []
+        # If alerts are disabled, return empty
+        if not user.alerts_enabled:
+            return Response({
+                "user": {
+                    "alert_method": user.alert_method,
+                    "alert_radius_m": user.alert_radius_m,
+                    "alerts_enabled": False,
+                },
+                "count": 0,
+                "hazards": [],
+                "message": "Alerts are disabled.",
+            })
+
+        # Find unresolved hazards
+        qs = Hazard.objects.exclude(
+            status=Hazard.Status.RESOLVED
+        ).select_related("mining_site", "reported_by")
+
+        nearby = []
         for h in qs:
             dist = haversine(lat, lng, float(h.latitude), float(h.longitude))
-            if dist <= radius:
-                data = HazardListSerializer(h).data
-                data["distance_m"] = round(dist, 1)
-                results.append(data)
+            if dist <= radius:          # <-- THE DISTANCE THRESHOLD CHECK
+                h.distance_m = round(dist, 1)
+                nearby.append(h)
 
-        results.sort(key=lambda x: x["distance_m"])
-        return Response(results)
+        nearby.sort(key=lambda x: x.distance_m)
 
+        # Log each alert (max once per 5 minutes per hazard per user)
+        for h in nearby:
+            recent = AlertLog.objects.filter(
+                user=user,
+                hazard=h,
+                created_at__gte=timezone.now() - timezone.timedelta(minutes=5),
+            ).exists()
+            if not recent:
+                AlertLog.objects.create(
+                    user=user,
+                    hazard=h,
+                    distance_m=h.distance_m,
+                    alert_method=user.alert_method,
+                    user_latitude=lat,
+                    user_longitude=lng,
+                )
 
+        return Response({
+            "user": {
+                "alert_method": user.alert_method,
+                "alert_radius_m": user.alert_radius_m,
+                "alerts_enabled": user.alerts_enabled,
+            },
+            "count": len(nearby),
+            "hazards": HazardListSerializer(nearby, many=True).data,
+        })
 # ============================================================
 # HAZARD RESPONSE
 # ============================================================
@@ -426,3 +489,80 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             recipient=request.user, is_read=False
         ).update(is_read=True)
         return Response({"detail": "All marked as read."})
+
+class UpdateAlertPreferencesView(APIView):
+    """
+    PATCH /api/auth/alert-preferences/
+    Body: { alert_method, alert_radius_m, alerts_enabled }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+
+        if "alert_method" in request.data:
+            method = request.data["alert_method"]
+            valid = ["VOICE", "FLASHLIGHT", "BOTH", "VIBRATION"]
+            if method not in valid:
+                return Response(
+                    {"detail": f"alert_method must be one of {valid}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.alert_method = method
+
+        if "alert_radius_m" in request.data:
+            try:
+                radius = int(request.data["alert_radius_m"])
+                if radius < 10 or radius > 5000:
+                    raise ValueError
+                user.alert_radius_m = radius
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "alert_radius_m must be 10–5000."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if "alerts_enabled" in request.data:
+            user.alerts_enabled = bool(request.data["alerts_enabled"])
+
+        user.save()
+        return Response(UserSerializer(user).data)
+
+
+class AlertLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    GET /api/alert-logs/  (admin only)
+    """
+    serializer_class = AlertLogSerializer
+    permission_classes = [IsAdminRole]
+
+    def get_queryset(self):
+        from .models import AlertLog
+        qs = AlertLog.objects.select_related("user", "hazard")
+        user_id = self.request.query_params.get("user")
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        hazard_id = self.request.query_params.get("hazard")
+        if hazard_id:
+            qs = qs.filter(hazard_id=hazard_id)
+        return qs
+
+
+class AlertLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    GET /api/alert-logs/         → all logs (admin only)
+    GET /api/alert-logs/?user=1  → filter by user
+    """
+    serializer_class = AlertLogSerializer
+    permission_classes = [IsAdminRole]
+
+    def get_queryset(self):
+        from .models import AlertLog
+        qs = AlertLog.objects.select_related("user", "hazard")
+        user_id = self.request.query_params.get("user")
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        hazard_id = self.request.query_params.get("hazard")
+        if hazard_id:
+            qs = qs.filter(hazard_id=hazard_id)
+        return qs

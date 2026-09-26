@@ -2,10 +2,27 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import (
     User, MiningSite, Hazard, HazardResponse,
-    Checklist, HazardStatusLog, Notification,
+    Checklist, HazardStatusLog, Notification, 
 )
+from .models import AlertLog 
 
 User = get_user_model()
+
+
+
+
+class AlertLogSerializer(serializers.ModelSerializer):
+    hazard_type = serializers.CharField(
+        source="hazard.get_hazard_type_display", read_only=True
+    )
+
+    class Meta:
+        model = AlertLog
+        fields = [
+            "id", "user", "hazard", "hazard_type", "distance_m",
+            "alert_method", "user_latitude", "user_longitude", "created_at",
+        ]
+        read_only_fields = ["created_at"]
 
 
 # ---------- User / Auth ----------
@@ -17,8 +34,9 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "email", "first_name", "last_name", "role",
-            "phone_number", "preferred_language", "is_active",
-            "password", "created_at",
+            "phone_number", "preferred_language",
+            "alert_method", "alert_radius_m", "alerts_enabled",
+            "is_active", "password", "created_at",
         ]
         read_only_fields = ["id", "created_at"]
 
@@ -98,7 +116,6 @@ class HazardResponseSerializer(serializers.ModelSerializer):
         read_only_fields = ["supervisor", "created_at", "updated_at"]
 
 
-# ---------- Hazard ----------
 
 class HazardListSerializer(serializers.ModelSerializer):
     hazard_type_display = serializers.CharField(
@@ -113,6 +130,7 @@ class HazardListSerializer(serializers.ModelSerializer):
     mining_site_name = serializers.CharField(
         source="mining_site.name", read_only=True
     )
+    distance_m = serializers.SerializerMethodField()
 
     class Meta:
         model = Hazard
@@ -123,8 +141,11 @@ class HazardListSerializer(serializers.ModelSerializer):
             "reported_by", "reported_by_name",
             "reported_date", "reported_time",
             "status", "status_display", "risk_level",
+            "distance_m",
         ]
 
+    def get_distance_m(self, obj):
+        return getattr(obj, "distance_m", None)
 
 class HazardDetailSerializer(serializers.ModelSerializer):
     hazard_type_display = serializers.CharField(
@@ -189,4 +210,23 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ["id", "hazard", "title", "message", "is_read", "created_at"]
+        read_only_fields = ["created_at"]
+
+
+        
+
+
+class AlertLogSerializer(serializers.ModelSerializer):
+    hazard_type = serializers.CharField(
+        source="hazard.get_hazard_type_display", read_only=True
+    )
+    user_email = serializers.CharField(source="user.email", read_only=True)
+
+    class Meta:
+        model = AlertLog
+        fields = [
+            "id", "user", "user_email", "hazard", "hazard_type",
+            "distance_m", "alert_method",
+            "user_latitude", "user_longitude", "created_at",
+        ]
         read_only_fields = ["created_at"]

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User, MiningSite, Hazard, HazardResponse,
-    Checklist, HazardStatusLog, Notification,
+    Checklist, HazardStatusLog, Notification, AlertLog,   
 )
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -23,9 +23,12 @@ class UserAdmin(BaseUserAdmin):
         ("Personal", {"fields": ("first_name", "last_name", "phone_number", "preferred_language")}),
         ("Role", {"fields": ("role", "is_active", "is_staff", "is_superuser")}),
     )
-    add_fieldsets = (
-        (None, {"fields": ("email", "password1", "password2", "role")}),
-    )
+
+@admin.register(AlertLog)
+class AlertLogAdmin(admin.ModelAdmin):
+    list_display = ("user", "hazard", "distance_m", "alert_method", "created_at")
+    list_filter = ("alert_method", "created_at")
+    search_fields = ("user__email",)
 
 
 admin.site.register(MiningSite)
