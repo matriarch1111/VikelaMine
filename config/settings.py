@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-uqf=4%q6#9r##9ih^^*w3cj#=ty&7t*!pzkjwxyl-ev$#6h$nn'
 DEBUG = True
-ALLOWED_HOSTS = ['vikelamine.onrender.com', 'localhost']
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
@@ -81,12 +81,13 @@ STATICFILES_DIRS = [
 ]
 
 # Enable compression and caching (Django 4.2+)
+# Django 4.2+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 

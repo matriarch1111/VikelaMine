@@ -1,32 +1,830 @@
-from.utils import get_exif_data
-from django.core.files.storage import default_storage
+```html
+{% extends 'core/base.html' %}
 
-def report_hazard(request):
-    if request.method == 'POST':
-        photo = request.FILES.get('photo')
-        lat = request.POST.get('latitude')
-        lng = request.POST.get('longitude')
+{% block content %}
 
-        # if no manual lat/lng, try get from photo EXIF
-        if (not lat or not lng) and photo:
-            temp_path = default_storage.save('tmp/'+photo.name, photo)
-            full_path = default_storage.path(temp_path)
-            exif_lat, exif_lng = get_exif_data(full_path)
-            if exif_lat:
-                lat, lng = exif_lat, exif_lng
-            # keep the file for model save
-            default_storage.delete(temp_path)
-            photo.seek(0) # reset file pointer
+<!-- Page Header -->
 
-        hazard = HazardReport.objects.create(
-            user=request.user,
-            description=request.POST.get('description'),
-            hazard_type=request.POST.get('hazard_type'),
-            latitude=lat,
-            longitude=lng,
-            photo=photo,
-            risk_level='High'
-        )
-        return redirect('maps')
 
-    return render(request, 'core/report_hazard.html')
+
+    <h1 style="font-size: 42px; margin: 20px 0 8px;">
+        Report a <span style="color: var(--red);">Hazard</span>
+    </h1>
+
+    <p style="color: var(--muted); max-width: 650px;">
+        Record a dangerous situation quickly and help keep everyone safe.
+        Capture the hazard, location and details of what you observed.
+    </p>
+</div>
+
+<!-- Report Card -->
+
+<div class="card">
+
+<form method="POST"
+      enctype="multipart/form-data"
+      id="hazardForm">
+
+    {% csrf_token %}
+
+    <!-- Hazard Category -->
+
+    <div>
+        <label for="hazard_category">Hazard Category</label>
+
+        <select name="hazard_category"
+                id="hazard_category"
+                required
+                onchange="updateHazardTypes()">
+
+            <option value="">Select hazard category</option>
+            <option value="Workplace Hazards">Workplace Hazards</option>
+            <option value="Geological Features">Geological Features</option>
+
+        </select>
+    </div>
+
+
+    <!-- Specific Hazard -->
+
+    <div style="margin-top: 20px;">
+
+        <label for="hazard_type">Specific Hazard</label>
+
+        <select name="hazard_type"
+                id="hazard_type"
+                required
+                disabled>
+
+            <option value="">Select a hazard category first</option>
+
+        </select>
+
+    </div>
+
+
+    <!-- Description -->
+
+    <div style="margin-top: 25px;">
+
+        <label for="description">Describe the Hazard</label>
+
+        <textarea
+            name="description"
+            id="description"
+            rows="6"
+            required
+            placeholder="Describe what happened or what danger you noticed..."></textarea>
+
+    </div>
+
+
+    <!-- Voice Recording -->
+
+    <div style="margin-top: 25px;">
+
+        <label>Voice Report</label>
+
+        <button
+            type="button"
+            onclick="startVoiceRecording()"
+            id="voiceButton"
+            class="btn btn-ghost">
+
+            Record Voice Report
+
+        </button>
+
+        <p id="recordingStatus"
+           style="color: var(--muted); font-size: 13px; margin-top: 10px;">
+        </p>
+
+
+        <!-- Recorded Audio -->
+
+        <div id="audioPreviewContainer"
+             style="display: none; margin-top: 15px;">
+
+            <p style="font-weight: 600; margin-bottom: 10px;">
+                Recorded Voice Report
+            </p>
+
+            <audio
+                id="audioPreview"
+                controls
+                autoplay
+                style="display: block; width: 100%; max-width: 500px;">
+            </audio>
+
+        </div>
+
+    </div>
+
+
+    <!-- Camera -->
+
+    <div style="margin-top: 30px;">
+
+        <label>Capture Hazard</label>
+
+        <p style="color: var(--muted); font-size: 13px;">
+            Take a photograph of the dangerous situation.
+        </p>
+
+
+        <!-- Open Camera -->
+
+        <button
+            type="button"
+            onclick="openCamera()"
+            id="cameraButton"
+            class="btn btn-ghost">
+
+            Open Camera
+
+        </button>
+
+
+        <!-- Camera Preview -->
+
+        <div id="cameraContainer"
+             style="display: none; margin-top: 20px;">
+
+            <video
+                id="camera"
+                autoplay
+                playsinline
+                style="width: 100%; max-width: 700px; border-radius: 12px; border: 1px solid var(--line); background: black;">
+            </video>
+
+            <br>
+
+            <button
+                type="button"
+                onclick="capturePhoto()"
+                class="btn btn-red"
+                style="margin-top: 12px;">
+
+                Capture Photo
+
+            </button>
+
+        </div>
+
+
+        <!-- Captured Photo -->
+
+        <div id="photoPreviewContainer"
+             style="display: none; margin-top: 20px;">
+
+            <p style="font-weight: 600;">
+                Captured Hazard
+            </p>
+
+            <img
+                id="photoPreview"
+                class="photo"
+                alt="Captured hazard">
+
+            <br>
+
+            <button
+                type="button"
+                onclick="retakePhoto()"
+                class="btn btn-ghost"
+                style="margin-top: 12px;">
+
+                Retake Photo
+
+            </button>
+
+        </div>
+
+
+        <!-- File Input -->
+
+        <input
+            type="file"
+            name="photo"
+            id="photo"
+            accept="image/*"
+            capture="environment"
+            style="margin-top: 15px;">
+
+    </div>
+
+
+    <!-- Location -->
+
+    <div style="margin-top: 30px;">
+
+        <label>Hazard Location</label>
+
+        <div class="card"
+             style="background: var(--panel2);">
+
+            <p id="locationStatus"
+               style="color: var(--muted); margin: 0;">
+
+                Location not captured yet.
+
+            </p>
+
+            <button
+                type="button"
+                onclick="getLocation()"
+                class="btn btn-ghost"
+                style="margin-top: 15px;">
+
+                Capture My Location
+
+            </button>
+
+        </div>
+
+
+        <!-- Hidden GPS fields -->
+
+        <input
+            type="hidden"
+            name="latitude"
+            id="latitude">
+
+        <input
+            type="hidden"
+            name="longitude"
+            id="longitude">
+
+    </div>
+
+
+    <!-- Submit -->
+
+    <div style="margin-top: 35px;">
+
+        <button
+            type="submit"
+            class="btn btn-red"
+            style="width: 100%; justify-content: center; padding: 15px;">
+
+            SUBMIT HAZARD REPORT
+
+        </button>
+
+    </div>
+
+</form>
+
+</div>
+
+
+<!-- JavaScript -->
+
+<script>
+
+
+// =========================
+// HAZARD DROPDOWN
+// =========================
+
+function updateHazardTypes() {
+
+    const category =
+        document.getElementById("hazard_category");
+
+    const hazardType =
+        document.getElementById("hazard_type");
+
+    hazardType.innerHTML = "";
+
+
+    if (category.value === "") {
+
+        hazardType.disabled = true;
+
+        const option =
+            document.createElement("option");
+
+        option.value = "";
+
+        option.textContent =
+            "Select a hazard category first";
+
+        hazardType.appendChild(option);
+
+        return;
+    }
+
+
+    hazardType.disabled = false;
+
+
+    let hazards = [];
+
+
+    if (category.value === "Workplace Hazards") {
+
+        hazards = [
+            "Fire",
+            "Chemical",
+            "Electrical",
+            "Unsafe Equipment",
+            "Fall Hazard",
+            "Structural",
+            "Ventilation",
+            "Personal Protective Equipment",
+            "Other"
+        ];
+
+    }
+
+
+    if (category.value === "Geological Features") {
+
+        hazards = [
+            "Rockfall",
+            "Ground Cracks",
+            "Sinkhole",
+            "Unstable Ground",
+            "Fault or Fracture",
+            "Slope Instability",
+            "Water Ingress",
+            "Loose Rock",
+            "Other"
+        ];
+
+    }
+
+
+    const defaultOption =
+        document.createElement("option");
+
+    defaultOption.value = "";
+
+    defaultOption.textContent =
+        "Select specific hazard";
+
+    hazardType.appendChild(defaultOption);
+
+
+    hazards.forEach(function(hazard) {
+
+        const option =
+            document.createElement("option");
+
+        option.value = hazard;
+
+        option.textContent = hazard;
+
+        hazardType.appendChild(option);
+
+    });
+
+}
+
+
+
+// =========================
+// VOICE RECORDING
+// =========================
+
+let mediaRecorder = null;
+
+let audioChunks = [];
+
+let audioBlob = null;
+
+
+function startVoiceRecording() {
+
+    const button =
+        document.getElementById("voiceButton");
+
+    const status =
+        document.getElementById("recordingStatus");
+
+    const audioPreview =
+        document.getElementById("audioPreview");
+
+    const audioPreviewContainer =
+        document.getElementById("audioPreviewContainer");
+
+
+    // Stop recording if already recording
+
+    if (mediaRecorder &&
+        mediaRecorder.state === "recording") {
+
+        mediaRecorder.stop();
+
+        button.textContent =
+            "Record Voice Report";
+
+        status.textContent =
+            "Processing recording...";
+
+        return;
+    }
+
+
+    // Check microphone support
+
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia) {
+
+        status.textContent =
+            "Voice recording is not supported by this browser.";
+
+        return;
+    }
+
+
+    navigator.mediaDevices
+        .getUserMedia({ audio: true })
+
+        .then(function(stream) {
+
+            audioChunks = [];
+
+
+            mediaRecorder =
+                new MediaRecorder(stream);
+
+
+            // Collect audio
+
+            mediaRecorder.ondataavailable =
+                function(event) {
+
+                    if (event.data.size > 0) {
+
+                        audioChunks.push(event.data);
+
+                    }
+
+                };
+
+
+            // When recording stops
+
+            mediaRecorder.onstop =
+                function() {
+
+                    audioBlob =
+                        new Blob(
+                            audioChunks,
+                            { type: "audio/webm" }
+                        );
+
+
+                    // Create audio URL
+
+                    const audioURL =
+                        URL.createObjectURL(audioBlob);
+
+
+                    // Put recording into player
+
+                    audioPreview.src =
+                        audioURL;
+
+
+                    // SHOW AUDIO PLAYER
+
+                    audioPreviewContainer.style.display =
+                        "block";
+
+
+                    // Load recording
+
+                    audioPreview.load();
+
+
+                    // Try to play automatically
+
+                    audioPreview.play().catch(function() {
+
+                        console.log(
+                            "Automatic playback was blocked. Press Play to listen."
+                        );
+
+                    });
+
+
+                    // Stop microphone
+
+                    stream.getTracks().forEach(
+                        function(track) {
+
+                            track.stop();
+
+                        }
+                    );
+
+
+                    status.textContent =
+                        "Voice recording captured. Press Play to listen.";
+
+                };
+
+
+            // Start recording
+
+            mediaRecorder.start();
+
+
+            button.textContent =
+                "Stop Recording";
+
+
+            status.textContent =
+                "Recording... click Stop Recording when finished.";
+
+        })
+
+
+        .catch(function(error) {
+
+            console.error(error);
+
+
+            status.textContent =
+                "Microphone access was denied or unavailable.";
+
+        });
+
+}
+
+
+
+// =========================
+// CAMERA
+// =========================
+
+let cameraStream = null;
+
+let capturedPhotoBlob = null;
+
+
+function openCamera() {
+
+    const cameraContainer =
+        document.getElementById(
+            "cameraContainer"
+        );
+
+
+    const camera =
+        document.getElementById(
+            "camera"
+        );
+
+
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia) {
+
+        alert(
+            "Camera is not supported by this browser."
+        );
+
+        return;
+    }
+
+
+    navigator.mediaDevices
+        .getUserMedia({
+            video: true
+        })
+
+        .then(function(stream) {
+
+            cameraStream = stream;
+
+            camera.srcObject = stream;
+
+            cameraContainer.style.display =
+                "block";
+
+        })
+
+        .catch(function(error) {
+
+            console.error(error);
+
+            alert(
+                "Camera access was denied or unavailable."
+            );
+
+        });
+
+}
+
+
+
+// =========================
+// CAPTURE PHOTO
+// =========================
+
+function capturePhoto() {
+
+    const camera =
+        document.getElementById(
+            "camera"
+        );
+
+
+    const photoPreview =
+        document.getElementById(
+            "photoPreview"
+        );
+
+
+    const photoPreviewContainer =
+        document.getElementById(
+            "photoPreviewContainer"
+        );
+
+
+    if (!cameraStream) {
+
+        alert(
+            "Please open the camera first."
+        );
+
+        return;
+    }
+
+
+    const canvas =
+        document.createElement(
+            "canvas"
+        );
+
+
+    canvas.width =
+        camera.videoWidth;
+
+
+    canvas.height =
+        camera.videoHeight;
+
+
+    const context =
+        canvas.getContext("2d");
+
+
+    context.drawImage(
+        camera,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    canvas.toBlob(
+
+        function(blob) {
+
+            capturedPhotoBlob =
+                blob;
+
+
+            photoPreview.src =
+                URL.createObjectURL(blob);
+
+
+            photoPreviewContainer.style.display =
+                "block";
+
+
+            document.getElementById(
+                "cameraContainer"
+            ).style.display =
+                "none";
+
+
+            if (cameraStream) {
+
+                cameraStream
+                    .getTracks()
+                    .forEach(function(track) {
+
+                        track.stop();
+
+                    });
+
+
+                cameraStream = null;
+
+            }
+
+        },
+
+        "image/jpeg"
+
+    );
+
+}
+
+
+
+// =========================
+// RETAKE PHOTO
+// =========================
+
+function retakePhoto() {
+
+    document.getElementById(
+        "photoPreviewContainer"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "photoPreview"
+    ).src = "";
+
+
+    openCamera();
+
+}
+
+
+
+// =========================
+// LOCATION
+// =========================
+
+function getLocation() {
+
+    const status =
+        document.getElementById(
+            "locationStatus"
+        );
+
+
+    if (!navigator.geolocation) {
+
+        status.textContent =
+            "Location is not supported by this browser.";
+
+        return;
+    }
+
+
+    status.textContent =
+        "Capturing location...";
+
+
+    navigator.geolocation.getCurrentPosition(
+
+        function(position) {
+
+            const latitude =
+                position.coords.latitude;
+
+
+            const longitude =
+                position.coords.longitude;
+
+
+            document.getElementById(
+                "latitude"
+            ).value =
+                latitude;
+
+
+            document.getElementById(
+                "longitude"
+            ).value =
+                longitude;
+
+
+            status.textContent =
+                "Location captured: " +
+                latitude.toFixed(6) +
+                ", " +
+                longitude.toFixed(6);
+
+        },
+
+
+        function(error) {
+
+            console.error(error);
+
+
+            status.textContent =
+                "Unable to capture your location.";
+
+        }
+
+    );
+
+}
+
+</script>
+
+{% endblock %}
+```

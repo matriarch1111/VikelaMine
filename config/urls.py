@@ -31,5 +31,5 @@ urlpatterns = [
     path('near-danger/', views.nearby_danger, name='near_danger'),
     path('check-nearby-hazards/', views.check_nearby_hazards, name='check_nearby_hazards'),
     path('hazard-map-data/', views.hazard_map_data, name='hazard_map_data'),
-
+    path('settings/', views.settings_view, name='settings'),
 ]

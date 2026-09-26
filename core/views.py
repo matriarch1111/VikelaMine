@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login
+from .models import Hazard, MiningSite
+from django.conf import settings
 
 
 
@@ -65,7 +67,15 @@ def dashboard(request):
 def report_hazard(request):
 
     if request.method == 'POST':
-        print(request.POST.dict())
+
+        hazard = Hazard.objects.create(
+            hazard_type=request.POST.get('hazard_type'),
+            description=request.POST.get('description'),
+            latitude=request.POST.get('latitude') or None,
+            longitude=request.POST.get('longitude') or None,
+            reported_by=request.user if request.user.is_authenticated else None,
+            photo=request.FILES.get('photo')
+        )
 
         return redirect('/reports/')
 
@@ -83,8 +93,7 @@ def add_report(request):
 # =========================
 # MAP / DANGER
 # =========================
-from django.conf import settings
-from django.http import JsonResponse
+
 
 def maps(request):
     return render(request, 'core/maps.html', {
@@ -92,25 +101,41 @@ def maps(request):
     })
 
 def hazard_map_data(request):
-    hazards = []
-    for h in HazardReport.objects.exclude(latitude__isnull=True):
-        hazards.append({
-            "latitude": float(h.latitude),
-            "longitude": float(h.longitude),
-            "type": h.hazard_type,
-            "description": h.description,
-            "status": getattr(h, 'status', 'reported'),
-            "risk_level": getattr(h, 'risk_level', 'High'),
-            "photo_url": h.photo.url if getattr(h, 'photo', None) else "",
-        })
-    sites = []
-    # if you have MiningSite model
-    try:
-        for s in MiningSite.objects.exclude(latitude__isnull=True):
-            sites.append({"name": s.name, "latitude": float(s.latitude), "longitude": float(s.longitude)})
-    except: pass
 
-    return JsonResponse({"hazards": hazards, "sites": sites})
+    hazards = []
+
+    for h in Hazard.objects.exclude(
+        latitude__isnull=True
+    ).exclude(
+        longitude__isnull=True
+    ):
+
+        hazards.append({
+            "id": h.id,
+            "latitude": h.latitude,
+            "longitude": h.longitude,
+            "type": h.get_hazard_type_display(),
+            "description": h.description,
+            "status": h.status,
+            "priority": h.priority,
+            "photo_url": h.photo.url if h.photo else "",
+        })
+
+    sites = []
+
+    for s in MiningSite.objects.all():
+
+        sites.append({
+            "name": s.name,
+            "latitude": s.latitude,
+            "longitude": s.longitude,
+            "status": s.status,
+        })
+
+    return JsonResponse({
+        "hazards": hazards,
+        "sites": sites
+    })
 def nearby_danger(request):
     return render(request, 'core/nearby_danger.html')
 
@@ -206,3 +231,6 @@ def check_nearby_hazards(request):
     lng = request.GET.get('lng')
     # for now return empty - you can add real logic later
     return JsonResponse({"hazards": []})
+
+def settings_view(request):
+    return render(request, 'core/settings.html')

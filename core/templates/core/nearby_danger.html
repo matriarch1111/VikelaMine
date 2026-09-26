@@ -1,47 +1,78 @@
 {% extends 'core/base.html' %}
 {% block content %}
-<div style="padding:30px; text-align:center;">
-  <h2>🚨 Live Safety Monitor</h2>
-  <p id="status">Checking location...</p>
-  <div id="flash-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:red; z-index:9999; opacity:0.8;"></div>
-  <div id="alerts"></div>
+<div class="container" style="padding:15px;">
+<h2 style="font-weight:900;">Near Danger - 20m Alert</h2>
+<p id="gps-status" style="background:#1A1A1A;color:#aaa;padding:10px;border-radius:8px;">Waiting for GPS... Allow precise location</p>
+<div id="danger-list" style="margin-top:15px;"></div>
+<button onclick="startTracking()" style="margin-top:15px;padding:10px 20px;border-radius:8px;background:#000;color:#fff;">Start 20m Scan</button>
 </div>
 
 <script>
-const FIVE_MIN_RADIUS = 500; // meters = ~5 min walk. Put 4000 if you want driving
-
-function speakAlert(text){
-    const msg = new SpeechSynthesisUtterance(text);
-    msg.rate = 1; msg.pitch = 1.2; msg.volume = 1;
-    window.speechSynthesis.speak(msg);
+// haversine in meters
+function distanceM(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = x => x*Math.PI/180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function flashLight(){
-    const flash = document.getElementById('flash-overlay');
-    let count=0;
-    const interval = setInterval(()=>{
-        flash.style.display = flash.style.display==='none'? 'block' : 'none';
-        if(++count>10){ clearInterval(interval); flash.style.display='none'; if(navigator.vibrate) navigator.vibrate([1000,200,1000]); }
-    }, 200);
-}
+let hazardsCache = [];
 
-function checkPosition(pos){
-    const lat = pos.coords.latitude; const lng = pos.coords.longitude;
-    fetch(`/check-nearby-hazards/?lat=${lat}&lng=${lng}&radius=${FIVE_MIN_RADIUS}`)
-   .then(r=>r.json()).then(data=>{
-        if(data.hazards.length>0){
-            const closest = data.hazards[0];
-            document.getElementById('status').innerHTML = `⚠️ DANGER ${closest.distance}m ahead!`;
-            document.getElementById('alerts').innerHTML = `<div style="background:red;color:white;padding:20px;border-radius:12px;font-size:20px;">${closest.type} - ${closest.distance}m away</div>`;
-            flashLight();
-            speakAlert(`Warning! ${closest.type} hazard ${Math.round(closest.distance)} meters ahead. Please be careful.`);
-        } else {
-            document.getElementById('status').innerHTML = `Safe - No hazards within 5 minutes (${FIVE_MIN_RADIUS}m)`;
-        }
-    });
-}
+// Load all hazards once - uses your existing endpoint
+fetch('{% url "hazard_map_data" %}')
+ .then(r=>r.json())
+ .then(data=>{
+   hazardsCache = data.hazards || [];
+   console.log("Loaded", hazardsCache.length, "hazards for 20m check");
+ });
 
-// watch continuously
-navigator.geolocation.watchPosition(checkPosition, err=>console.log(err), {enableHighAccuracy:true, maximumAge:0, timeout:5000});
+function startTracking(){
+ if(!navigator.geolocation){ alert("GPS not supported on this device"); return; }
+ document.getElementById('gps-status').innerText = "Scanning every 2 seconds for hazards within 20m...";
+
+ navigator.geolocation.watchPosition(pos=>{
+   const myLat = pos.coords.latitude;
+   const myLng = pos.coords.longitude;
+   const acc = Math.round(pos.coords.accuracy);
+   
+   document.getElementById('gps-status').innerHTML = `You: ${myLat.toFixed(6)}, ${myLng.toFixed(6)}<br>Accuracy: ±${acc}m | Checking ${hazardsCache.length} hazards`;
+
+   const close = [];
+   hazardsCache.forEach(h=>{
+     const d = distanceM(myLat, myLng, parseFloat(h.latitude), parseFloat(h.longitude));
+     if(d <= 20){ // 20 METERS HERE
+       h._dist = d;
+       close.push(h);
+     }
+   });
+
+   close.sort((a,b)=>a._dist - b._dist);
+   const list = document.getElementById('danger-list');
+   
+   if(close.length === 0){
+     list.innerHTML = `<div style="background:#22c55e;color:white;padding:15px;border-radius:10px;">✅ Safe - No hazard within 20m</div>`;
+     return;
+   }
+
+   list.innerHTML = "";
+   close.forEach(h=>{
+     list.innerHTML += `
+       <div style="background:#ef4444;color:white;padding:15px;border-radius:10px;margin-bottom:10px;border:2px solid #fff;">
+         <b>⚠️ DANGER ${h._dist.toFixed(1)}m AWAY!</b><br>
+         <b>Type:</b> ${h.type}<br>
+         ${h.description||''}<br>
+         <a href="https://www.google.com/maps?q=${h.latitude},${h.longitude}" target="_blank" style="color:white;text-decoration:underline;">Open GPS</a>
+       </div>`;
+   });
+
+   // Vibrate if within 20m
+   if(navigator.vibrate) navigator.vibrate([400,100,400]);
+
+ }, err=>{
+   document.getElementById('gps-status').innerText = "GPS Error: " + err.message + " - Turn on location";
+ }, {enableHighAccuracy:true, maximumAge:0, timeout:15000});
+}
 </script>
 {% endblock %}

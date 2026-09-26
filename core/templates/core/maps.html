@@ -1,122 +1,88 @@
-{% extends 'core/base.html' %}
-{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VikelaMine - Mine Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { margin:0; padding:0; }
+    #map { height: 100vh; width: 100vw; } /* THIS fixes your blank */
+  </style>
+</head>
+<body>
+<div id="map"></div>
 
-{% block content %}
-<style>
-    #map { height: 70vh; width: 100%; border-radius: 12px; border: 2px solid #E8E0D0; }
-    .filter-bar {
-        display: flex; gap: 10px; flex-wrap: wrap;
-        margin-bottom: 14px; padding: 14px;
-        background: #1A1A1A; border-radius: 12px;
-    }
-    .filter-bar label { color: #fff; font-size: 13px; cursor:pointer; }
-    .legend { background:white; padding:10px; border-radius:8px; font-size:13px; }
-    .legend-dot { width:12px; height:12px; border-radius:50%; display:inline-block; margin-right:6px; }
-</style>
-
-<div class="container mt-4" style="max-width:1100px;">
-    <h2 style="font-weight:900; margin-bottom:12px;">Hazard Map</h2>
-
-    <div class="filter-bar">
-        <label><input type="checkbox" id="filter-reported" checked> Reported</label>
-        <label><input type="checkbox" id="filter-investigating" checked> Investigating</label>
-        <label><input type="checkbox" id="filter-in_progress" checked> In Progress</label>
-        <label><input type="checkbox" id="filter-resolved"> Resolved</label>
-        <label><input type="checkbox" id="filter-sites" checked> Mining Sites</label>
-        <span style="margin-left:auto; color:#aaa; font-size:12px;">Auto-detected from photo GPS</span>
-    </div>
-
-    <div id="map"></div>
-
-    <div class="legend" style="margin-top:10px;">
-        <span><span class="legend-dot" style="background:#ef4444"></span>Reported</span>
-        <span style="margin-left:10px;"><span class="legend-dot" style="background:#eab308"></span>Investigating</span>
-        <span style="margin-left:10px;"><span class="legend-dot" style="background:#f97316"></span>In Progress</span>
-        <span style="margin-left:10px;"><span class="legend-dot" style="background:#22c55e"></span>Resolved</span>
-        <span style="margin-left:10px;"><span class="legend-dot" style="background:#3b82f6"></span>Mining Site</span>
-    </div>
-</div>
-
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let map, hazardMarkers=[], siteMarkers=[];
+// 1. SPU Kimberley - fixes Africa view
+const map = L.map('map').setView([-28.7414, 24.7716], 16);
 
-    function initMap() {
-        map = new google.maps.Map(document.getElementById('map'), {
-            center: { lat: -28.7282, lng: 24.7499 }, // Kimberley
-            zoom: 6,
-        });
+// 2. NO API KEY tile - fixes "API key required"
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Esri',
+  maxZoom: 19
+}).addTo(map);
 
-        fetch('{% url "hazard_map_data" %}')
-            .then(r => r.json())
-            .then(data => {
-                console.log("Map data:", data);
-                drawSites(data.sites || []);
-                drawHazards(data.hazards || []);
-                if(data.hazards.length + data.sites.length > 0){
-                    const bounds = new google.maps.LatLngBounds();
-                    [...data.sites, ...data.hazards].forEach(p => bounds.extend({lat: p.latitude, lng: p.longitude}));
-                    map.fitBounds(bounds);
-                }
-            }).catch(e => console.error("Map fetch failed", e));
-    }
+// 3. Test pin - proves map works even with no DB data
+L.marker([-28.7414, 24.7716]).addTo(map)
+  .bindPopup("<b>SPU Campus</b><br>VikelaMine Test").openPopup();
 
-    function statusColor(s){
-        if(s==='resolved') return '#22c55e';
-        if(s==='investigating') return '#eab308';
-        if(s==='in_progress') return '#f97316';
-        return '#ef4444';
-    }
+fetch('/api/hazard-map-data/')
+  .then(r => r.json())
+  .then(d => {
 
-    function drawSites(sites){
-        sites.forEach(s => {
-            const m = new google.maps.Marker({
-                position:{lat:s.latitude, lng:s.longitude}, map:map,
-                icon:{url:'https://maps.google.com/mapfiles/ms/icons/blue-dot.png'},
-                title:s.name
-            });
-            const iw = new google.maps.InfoWindow({content:`<b>${s.name}</b><br>Mining Site`});
-            m.addListener('click', ()=>iw.open(map,m));
-            siteMarkers.push(m);
-        });
-    }
+    console.log("Hazards from DB:", d);
 
-    function drawHazards(hazards){
-        hazards.forEach(h => {
-            const m = new google.maps.Marker({
-                position:{lat:h.latitude, lng:h.longitude}, map:map,
-                icon:{path:google.maps.SymbolPath.CIRCLE, scale:10, fillColor:statusColor(h.status), fillOpacity:1, strokeColor:'#fff', strokeWeight:2}
-            });
-            const photo = h.photo_url ? `<br><img src="${h.photo_url}" style="max-width:220px;border-radius:8px;margin-top:6px;">` : '';
-            const iw = new google.maps.InfoWindow({
-                content:`<div style="color:#111;max-width:250px;">
-                <b>${h.type}</b><br><small>${h.description || ''}</small><br>
-                Status: <b>${h.status}</b><br>Risk: ${h.risk_level || 'High'}<br>
-                ${photo}
-                <br><a href="https://www.google.com/maps?q=${h.latitude},${h.longitude}" target="_blank">Open GPS</a>
-                </div>`
-            });
-            m.addListener('click', ()=>iw.open(map,m));
-            m._status = h.status;
-            hazardMarkers.push(m);
-        });
-    }
+    // =========================
+    // HAZARDS
+    // =========================
 
-    function applyFilters(){
-        const show = {
-            reported: document.getElementById('filter-reported').checked,
-            investigating: document.getElementById('filter-investigating').checked,
-            in_progress: document.getElementById('filter-in_progress').checked,
-            resolved: document.getElementById('filter-resolved').checked,
-            sites: document.getElementById('filter-sites').checked,
-        };
-        hazardMarkers.forEach(m => m.setVisible(!!show[m._status]));
-        siteMarkers.forEach(m => m.setVisible(show.sites));
-    }
+    d.hazards.forEach(h => {
 
-    ['filter-reported','filter-investigating','filter-in_progress','filter-resolved','filter-sites'].forEach(id=>{
-        document.getElementById(id).addEventListener('change', applyFilters);
+      L.marker([
+        h.latitude,
+        h.longitude
+      ])
+      .addTo(map)
+      .bindPopup(`
+        <b>Hazard: ${h.type}</b><br>
+        ${h.description}<br><br>
+        <b>Status:</b> ${h.status}<br>
+        <b>Priority:</b> ${h.priority}
+      `);
+
     });
-</script>
 
-<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initMap"></script>
-{% endblock %}
+
+    // =========================
+    // MINING SITES
+    // =========================
+
+    d.sites.forEach(s => {
+
+      L.marker([
+        s.latitude,
+        s.longitude
+      ])
+      .addTo(map)
+      .bindPopup(`
+        <b>${s.name}</b><br>
+        Mining Site<br>
+        Status: ${s.status}
+      `);
+
+    });
+
+  })
+  .catch(err => console.error(err));
+// 5. Live blue dot - your actual location tracking (minemap)
+map.locate({setView:false, watch:true, enableHighAccuracy:true});
+map.on('locationfound', e => {
+  L.circleMarker(e.latlng, {radius:8, color:'blue', fillOpacity:1}).addTo(map);
+});
+</script>
+</body>
+</html>
