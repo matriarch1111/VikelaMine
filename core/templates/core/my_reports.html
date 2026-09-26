@@ -1,0 +1,15 @@
+{% extends 'core/base.html' %}{% block content %}
+<div class="max-w-6xl mx-auto p-4 bg-[#F6F1E7] border border-[#E8E0D1] mt-4 rounded-[12px] text-black">
+<div class="flex flex-wrap gap-2 text-xs mb-4">
+<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Type</option></select>
+<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Severity</option></select>
+<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Status</option></select>
+<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Employee</option></select>
+<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Department</option></select>
+<input type="date" class="border border-[#E8E0D1] p-2 bg-white text-black rounded">
+<input placeholder="Search picture" class="border border-[#E8E0D1] p-2 bg-white text-black rounded placeholder:text-black">
+</div>
+<table class="w-full text-xs text-left text-black"><tr class="font-bold border-b border-[#E8E0D1] text-black"><th>Who</th><th>When</th><th>Type</th><th>Status</th><th>Progress</th><th>Photo</th></tr>
+<tr class="border-b border-[#E8E0D1] text-black"><td>JD - Mining</td><td>Today 10:42</td><td>Fall</td><td>Fixing</td><td><div class="w-20 h-2 bg-[#E8E0D1]"><div class="h-2 bg-[#D95D26] w-[40%]"></div></div></td><td>📷</td></tr>
+</table>
+</div>{% endblock %}

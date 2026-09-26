@@ -1,0 +1,19 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="appbar"><a href__="{% url 'dashboard' %}" class="link">← Admin</a><b>User Management</b><span></span></div>
+<div class="wrap" style="padding:30px 24px">
+  <div class="grid grid-2">
+    <div class="card"><h3 style="margin-top:0">Create user</h3>
+      <form method="post">{% csrf_token %}
+        <label>Username</label><input name="username" required>
+        <label>Password</label><input type="password" name="password" required>
+        <label>Role</label><select name="role"><option value="worker">Worker</option><option value="supervisor">Supervisor</option><option value="admin">Administrator</option></select>
+        <label>Mining site</label><select name="mining_site"><option value="">—</option>{% for s in sites %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+        <label>Language</label><select name="language"><option>English</option><option>isiZulu</option><option>Setswana</option><option>Afrikaans</option><option>Xitsonga</option></select>
+        <div style="height:14px"></div><button class="btn btn-red" style="width:100%;justify-content:center">Create</button>
+      </form></div>
+    <div class="card" style="padding:0;overflow:hidden"><table><tr><th>Username</th><th>Role</th><th>Site</th></tr>
+      {% for u in users %}<tr><td>{{ u.username }}</td><td>{{ u.role }}</td><td>{{ u.assigned_site|default:"—" }}</td></tr>{% endfor %}</table></div>
+  </div>
+</div>
+{% endblock %}

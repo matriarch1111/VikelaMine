@@ -1,0 +1,235 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+<!-- HERO -->
+<section class="hero">
+    <div class="wrap">
+
+        
+
+        <h1>
+            RECORD.<br>
+            <span class="r">RESOLVE.</span><br>
+            PREVENT.
+        </h1>
+
+        <p class="sub">
+            <b><i>meld vandag - sebenza uphephile kusasa</i></b>
+            
+        </p>
+
+        <p>
+            <a href="{% url 'login' %}" class="btn btn-red">
+                Get Started
+            </a>
+
+            <a href="{% url 'how_it_works' %}" class="btn btn-out">
+                How It Works
+            </a>
+        </p>
+
+    </div>
+</section>
+
+
+<!-- WHAT VIKELAMINE DOES -->
+<section class="section">
+    <div class="wrap">
+
+        <h2>Making Safety Reporting Easier</h2>
+
+        <p class="lead">
+            VikelaMine provides a central platform for recording,
+            managing and reviewing mining safety hazards.
+        </p>
+
+        <div class="grid grid-3">
+
+            <div class="card">
+                <div class="ic">🚨</div>
+
+                <h3>Record Hazards</h3>
+
+                <p>
+                    Workers can report hazards and unsafe conditions
+                    using structured safety reports.
+                </p>
+            </div>
+
+
+            <div class="card">
+                <div class="ic">🔧</div>
+
+                <h3>Resolve Issues</h3>
+
+                <p>
+                    Supervisors can review reported hazards and
+                    track actions taken to address them.
+                </p>
+            </div>
+
+
+            <div class="card">
+                <div class="ic">📊</div>
+
+                <h3>Prevent Future Risks</h3>
+
+                <p>
+                    Recorded safety information can be reviewed to
+                    identify recurring hazards and areas requiring attention.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+
+<!-- KEY FEATURES -->
+<section class="section" style="background:#0f0f0f">
+
+    <div class="wrap">
+
+        <h2>Key Features</h2>
+
+        <p class="lead">
+            The platform brings important safety information together
+            in one system.
+        </p>
+
+
+        <div class="grid grid-3">
+
+            <div class="card">
+                <div class="ic">📋</div>
+
+                <h3>Hazard Reporting</h3>
+
+                <p>
+                    Create reports for unsafe conditions and mining
+                    hazards.
+                </p>
+            </div>
+
+
+            <div class="card">
+                <div class="ic">📍</div>
+
+                <h3>Location Information</h3>
+
+                <p>
+                    Associate reports with locations to help identify
+                    where hazards are occurring.
+                </p>
+            </div>
+
+
+            <div class="card">
+                <div class="ic">📸</div>
+
+                <h3>Evidence</h3>
+
+                <p>
+                    Support safety reports with information and
+                    evidence about the reported hazard.
+                </p>
+            </div>
+
+
+            <div class="card">
+                <div class="ic">🗺️</div>
+
+                <h3>Safety Map</h3>
+
+                <p>
+                    
+                    View reported hazards geographically and identify
+                    areas where safety issues have been recorded.
+                </p>
+            </div>
+
+
+            <div class="card">
+                <div class="ic">📊</div>
+
+                <h3>Safety Summaries</h3>
+
+                <p>
+                    Review reported hazards and their status through
+                    safety summaries.
+                </p>
+            </div>
+
+
+            <div class="card">
+                <div class="ic">🆘</div>
+
+                <h3>Emergency Alert</h3>
+
+                <p>
+                    Provide an emergency alert mechanism for situations
+                    requiring immediate attention.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+
+
+
+<!-- ABOUT / PURPOSE -->
+<section class="section" style="background:#0f0f0f">
+
+    <div class="wrap">
+
+        <h2>About VikelaMine</h2>
+
+        <p class="lead">
+            VikelaMine is focused on improving the way mining safety
+            information is recorded and managed.
+        </p>
+
+        <p style="color:var(--muted);max-width:750px;line-height:1.7">
+
+            Instead of relying only on informal reporting or paper-based
+            records, VikelaMine provides a central digital platform where
+            safety hazards can be recorded, reviewed and followed through
+            to resolution.
+
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- FINAL CTA -->
+<section class="section">
+
+    <div class="wrap" style="text-align:center">
+
+        <h2>Ready to improve safety reporting?</h2>
+
+        <p class="lead" style="margin-left:auto;margin-right:auto">
+
+            Explore the platform and see how VikelaMine can support
+            hazard reporting and safety management.
+
+        </p>
+
+        <a href="{% url 'login' %}" class="btn btn-red">
+            Log In
+        </a>
+
+    </div>
+
+</section>
+
+{% endblock %}

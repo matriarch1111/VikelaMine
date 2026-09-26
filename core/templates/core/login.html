@@ -1,0 +1,32 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="wrap" style="max-width:420px;padding:70px 24px">
+    <h1 style="font-size:34px;font-weight:900;letter-spacing:-1px">
+        Log in to VikelaMine
+    </h1>
+    <p style="color:var(--muted);margin:6px 0 26px">
+        Record. Resolve. Prevent.
+    </p>
+
+    {% if error %}
+        <p style="color:var(--red);font-size:14px;margin-bottom:15px">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        <label>Username</label>
+        <input type="text" name="username" placeholder="Enter your username (e.g. Thomas)" required>
+
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Enter your password" required>
+
+        <a href="/forgot_password/">Forgot your password</a>
+        
+        <div style="height:18px"></div>
+
+        <button type="submit" class="btn btn-red" style="width:100%;justify-content:center">
+            Log In
+        </button>
+    </form>
+</div>
+{% endblock %}

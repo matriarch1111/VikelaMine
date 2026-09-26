@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VikelaMine - Mine Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { margin:0; padding:0; }
+    #map { height: 100vh; width: 100vw; } /* THIS fixes your blank */
+  </style>
+</head>
+<body>
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// 1. SPU Kimberley - fixes Africa view
+const map = L.map('map').setView([-28.7414, 24.7716], 16);
+
+// 2. NO API KEY tile - fixes "API key required"
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Esri',
+  maxZoom: 19
+}).addTo(map);
+
+// 3. Test pin - proves map works even with no DB data
+L.marker([-28.7414, 24.7716]).addTo(map)
+  .bindPopup("<b>SPU Campus</b><br>VikelaMine Test").openPopup();
+
+fetch('/api/hazard-map-data/')
+  .then(r => r.json())
+  .then(d => {
+
+    console.log("Hazards from DB:", d);
+
+    // =========================
+    // HAZARDS
+    // =========================
+
+    d.hazards.forEach(h => {
+
+      L.marker([
+        h.latitude,
+        h.longitude
+      ])
+      .addTo(map)
+      .bindPopup(`
+        <b>Hazard: ${h.type}</b><br>
+        ${h.description}<br><br>
+        <b>Status:</b> ${h.status}<br>
+        <b>Priority:</b> ${h.priority}
+      `);
+
+    });
+
+
+    // =========================
+    // MINING SITES
+    // =========================
+
+    d.sites.forEach(s => {
+
+      L.marker([
+        s.latitude,
+        s.longitude
+      ])
+      .addTo(map)
+      .bindPopup(`
+        <b>${s.name}</b><br>
+        Mining Site<br>
+        Status: ${s.status}
+      `);
+
+    });
+
+  })
+  .catch(err => console.error(err));
+// 5. Live blue dot - your actual location tracking (minemap)
+map.locate({setView:false, watch:true, enableHighAccuracy:true});
+map.on('locationfound', e => {
+  L.circleMarker(e.latlng, {radius:8, color:'blue', fillOpacity:1}).addTo(map);
+});
+</script>
+</body>
+</html>

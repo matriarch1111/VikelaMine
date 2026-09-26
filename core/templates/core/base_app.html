@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VikelaMine</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="max-w-[420px] mx-auto bg-black min-h-screen relative pb-20">
+<div class="bg-black text-white p-3 flex justify-between items-center">
+  <h1 class="font-black text-xl">Vike<span class="text-red-600">la</span>Mine</h1>
+  <span class="text-[10px] bg-green-600 px-2 py-0.5 rounded-full">● System Online</span>
+</div>
+{% block app_content %}{% endblock %}
+<nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-white flex justify-around py-2 border-t z-50">
+  <a href="/app/" class="text-center text-[10px]"><i class="fa-solid fa-house block text-lg"></i>Home</a>
+  <a href="/app/reports/" class="text-center text-[10px]"><i class="fa-solid fa-file-lines block text-lg"></i>My Reports</a>
+  <a href="#" id="sos-nav" class="text-center text-[10px] text-red-600 font-bold"><div class="bg-red-600 text-white text-[8px] px-1 rounded">SOS</div>SOS</a>
+  <a href="/app/documents/" class="text-center text-[10px]"><i class="fa-solid fa-folder block text-lg"></i>Documents</a>
+</nav>
+<script>
+document.getElementById('sos-nav').onclick = (e)=>{
+  e.preventDefault();
+  if(!confirm("SOS ALERT? This will alert Supervisors, Security, Admins + trigger sirens with your GPS location")) return;
+  navigator.geolocation.getCurrentPosition(p=>{
+    fetch('/sos-alert/',{method:'POST',headers:{'X-CSRFToken':'{{csrf_token}}','Content-Type':'application/json'},body:JSON.stringify({lat:p.coords.latitude,lng:p.coords.longitude})})
+  .then(()=>{alert("🚨 SOS SENT! Location: "+p.coords.latitude.toFixed(5)+","+p.coords.longitude.toFixed(5))})
+  })
+}
+</script>
+</body>
+</html>

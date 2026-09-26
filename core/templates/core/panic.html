@@ -1,0 +1,26 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="appbar"><a href__="{% url 'dashboard' %}" class="link">← Dashboard</a><b>🚨 Panic Button</b><span></span></div>
+<div class="wrap" style="max-width:480px;padding:40px 24px;text-align:center">
+  <p style="color:var(--muted)">Press and hold to broadcast an emergency alert with your live location to supervisors.</p>
+  <button id="panic" class="btn btn-red" style="width:200px;height:200px;border-radius:50%;font-size:22px;justify-content:center;margin:24px auto">SOS</button>
+  <p id="res" style="color:var(--muted);min-height:24px"></p>
+  <h3 style="margin-top:30px;text-align:left">Recent alerts</h3>
+  {% for a in alerts %}<div class="card" style="margin-bottom:10px"><p style="font-size:14px">{{ a.created_at|date:"d M Y H:i" }} — {% if a.latitude %}{{ a.latitude|floatformat:4 }}, {{ a.longitude|floatformat:4 }}{% else %}no GPS{% endif %}</p></div>{% empty %}<p style="color:var(--muted)">No alerts sent.</p>{% endfor %}
+</div>
+{% block scripts %}
+<script>
+const btn=document.getElementById('panic'),res=document.getElementById('res');
+let t=0;
+btn.addEventListener('mousedown',()=>{t=setTimeout(send,800);});
+btn.addEventListener('mouseup',()=>clearTimeout(t));
+btn.addEventListener('touchstart',e=>{t=setTimeout(send,800);e.preventDefault();});
+btn.addEventListener('touchend',()=>clearTimeout(t));
+function send(){
+  const fd=new FormData();
+  navigator.geolocation.getCurrentPosition(p=>{fd.append('latitude',p.coords.latitude);fd.append('longitude',p.coords.longitude);post();},()=>post());
+  function post(){fetch('{% url "trigger_panic" %}',{method:'POST',body:fd,headers:{'X-CSRFToken':'{{ csrf_token }}'}}).then(r=>r.json()).then(()=>res.innerHTML='<b style="color:#69f0ae">✓ Alert sent. Help is on the way.</b>');}
+}
+</script>
+{% endblock %}
+{% endblock %}

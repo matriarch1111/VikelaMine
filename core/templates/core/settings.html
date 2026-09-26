@@ -1,0 +1,126 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="wrap" style="padding-top: 40px; padding-bottom: 60px; max-width: 800px;">
+
+  <div style="margin-bottom: 30px;">
+    <div class="badge"><span class="dot"></span> Preferences</div>
+    <h1 style="font-size: 42px; margin: 20px 0 8px;">App <span style="color: var(--red);">Settings</span></h1>
+    <p style="color: var(--muted);">Customize VikelaMine appearance and safety alerts.</p>
+  </div>
+
+  <!-- APPEARANCE -->
+  <div class="card" style="margin-bottom: 20px;">
+    <h3 style="margin:0 0 15px;">🎨 Appearance</h3>
+    <p style="color: var(--muted); font-size:13px; margin-bottom:15px;">Change theme — applies instantly to whole app.</p>
+    
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+      <button onclick="setTheme('dark')" id="btn-dark" class="btn btn-ghost" style="border:2px solid var(--red); padding:20px; flex-direction:column;">
+        🌙<br><b>Dark</b><br><span style="font-size:11px; color:var(--muted)">Mine mode</span>
+      </button>
+      <button onclick="setTheme('light')" id="btn-light" class="btn btn-ghost" style="padding:20px; flex-direction:column;">
+        ☀️<br><b>Light</b><br><span style="font-size:11px; color:var(--muted)">Day mode</span>
+      </button>
+      <button onclick="setTheme('amoled')" id="btn-amoled" class="btn btn-ghost" style="padding:20px; flex-direction:column;">
+        ⚫<br><b>AMOLED</b><br><span style="font-size:11px; color:var(--muted)">Pure black</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SAFETY ALERTS -->
+  <div class="card" style="margin-bottom: 20px;">
+    <h3 style="margin:0 0 15px;">🚨 Safety Alerts</h3>
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--line);">
+      <div><b>Near-danger warning (20m)</b><br><span style="font-size:12px; color:var(--muted)">Vibrate + sound when near hazard</span></div>
+      <label class="switch"><input type="checkbox" id="nearDanger" checked onchange="savePref('nearDanger', this.checked)"><span></span></label>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--line);">
+      <div><b>High-accuracy GPS</b><br><span style="font-size:12px; color:var(--muted)">Uses more battery but precise</span></div>
+      <label class="switch"><input type="checkbox" id="highAcc" checked onchange="savePref('highAcc', this.checked)"><span></span></label>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0;">
+      <div><b>Auto-capture location</b><br><span style="font-size:12px; color:var(--muted)">Get GPS on report page load</span></div>
+      <label class="switch"><input type="checkbox" id="autoLoc" checked onchange="savePref('autoLoc', this.checked)"><span></span></label>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="card">
+    <h3 style="margin:0 0 15px;">🗺️ Map Settings</h3>
+    <div style="margin-bottom:15px;">
+      <label>Default Map Style</label>
+      <select id="mapStyle" onchange="savePref('mapStyle', this.value)" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text);">
+        <option value="street">Street (Esri) - no key needed</option>
+        <option value="satellite">Satellite</option>
+        <option value="topo">Topographic</option>
+      </select>
+    </div>
+    <p id="saveStatus" style="color: var(--muted); font-size:13px; margin-top:10px;"></p>
+  </div>
+
+</div>
+
+<style>
+/* Toggle switch to match vkela.css */
+.switch { position:relative; display:inline-block; width:44px; height:24px; }
+.switch input { opacity:0; width:0; height:0; }
+.switch span { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:var(--panel2); border:1px solid var(--line); border-radius:24px; transition:.3s; }
+.switch span:before { content:""; position:absolute; height:18px; width:18px; left:3px; bottom:2px; background:white; border-radius:50%; transition:.3s; }
+.switch input:checked + span { background:var(--red); border-color:var(--red); }
+.switch input:checked + span:before { transform:translateX(18px); }
+</style>
+
+<script>
+// Theme logic - works with your vkela.css variables
+function setTheme(theme){
+  localStorage.setItem('vikela-theme', theme);
+  document.documentElement.setAttribute('data-theme', theme);
+  
+  // Update your CSS variables
+  if(theme==='light'){
+    document.documentElement.style.setProperty('--bg','#f6f6f6');
+    document.documentElement.style.setProperty('--panel','#ffffff');
+    document.documentElement.style.setProperty('--panel2','#eeeeee');
+    document.documentElement.style.setProperty('--text','#111');
+    document.documentElement.style.setProperty('--muted','#666');
+    document.documentElement.style.setProperty('--line','#ddd');
+  } else if(theme==='dark'){
+    document.documentElement.style.setProperty('--bg','#0a0a0a');
+    document.documentElement.style.setProperty('--panel','#151515');
+    document.documentElement.style.setProperty('--panel2','#1e1e1e');
+    document.documentElement.style.setProperty('--text','#fff');
+    document.documentElement.style.setProperty('--muted','#9aa0a6');
+    document.documentElement.style.setProperty('--line','#2a2a2a');
+  } else { // amoled
+    document.documentElement.style.setProperty('--bg','#000000');
+    document.documentElement.style.setProperty('--panel','#000000');
+    document.documentElement.style.setProperty('--panel2','#111');
+    document.documentElement.style.setProperty('--text','#fff');
+    document.documentElement.style.setProperty('--muted','#888');
+    document.documentElement.style.setProperty('--line','#222');
+  }
+  // Highlight active button
+  document.querySelectorAll('[id^="btn-"]').forEach(b=>b.style.borderColor='var(--line)');
+  document.getElementById('btn-'+theme).style.borderColor='var(--red)';
+  document.getElementById('saveStatus').innerText='✅ Theme saved: '+theme;
+}
+
+function savePref(key, val){
+  localStorage.setItem('vikela-'+key, val);
+  document.getElementById('saveStatus').innerText='✅ Preference saved';
+  setTimeout(()=>document.getElementById('saveStatus').innerText='', 2000);
+}
+
+// Load on start
+window.addEventListener('load', ()=>{
+  const theme = localStorage.getItem('vikela-theme') || 'dark';
+  setTheme(theme);
+  ['nearDanger','highAcc','autoLoc'].forEach(k=>{
+    const v=localStorage.getItem('vikela-'+k);
+    if(v!==null) document.getElementById(k).checked = v==='true';
+  });
+  const ms=localStorage.getItem('vikela-mapStyle');
+  if(ms) document.getElementById('mapStyle').value=ms;
+});
+</script>
+{% endblock %}

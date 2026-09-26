@@ -1,0 +1,31 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="appbar"><a href__="{% url 'dashboard' %}" class="link">← Dashboard</a><b>Resolve: {{ h.get_hazard_type_display }} #{{ h.id }}</b><span></span></div>
+<div class="wrap" style="max-width:560px;padding:30px 24px">
+  {% if h.photo %}<img class="photo" src="{{ h.photo.url }}">{% endif %}
+  <h3 style="margin:20px 0 10px">Follow-up checklist</h3>
+  <form method="post" enctype="multipart/form-data" id="rf">{% csrf_token %}
+    {% for c in h.checklist.all %}
+      <label style="display:flex;align-items:center;gap:10px;margin:8px 0">
+        <input type="checkbox" name="cl" value="{{ c.id }}" data-id="{{ c.id }}" {% if c.completed %}checked{% endif %} style="width:auto">
+        <span>{{ c.task }}</span>
+      </label>
+    {% endfor %}
+    <label>Comment / response</label><textarea name="comment" rows="3"></textarea>
+    <label>Evidence photo</label><input type="file" name="evidence_photo" accept="image/*">
+    <input type="hidden" name="checklist" id="cljson">
+    <div style="display:flex;gap:12px;margin-top:20px">
+      <button class="btn btn-out" name="action" value="save" style="flex:1;justify-content:center">Save progress</button>
+      <button class="btn btn-red" name="action" value="resolve" style="flex:1;justify-content:center">Mark as Resolved</button>
+    </div>
+  </form>
+</div>
+{% block scripts %}
+<script>
+document.getElementById('rf').addEventListener('submit',()=>{
+  const items=[...document.querySelectorAll('input[name=cl]')].map(c=>({id:c.dataset.id,done:c.checked}));
+  document.getElementById('cljson').value=JSON.stringify(items);
+});
+</script>
+{% endblock %}
+{% endblock %}

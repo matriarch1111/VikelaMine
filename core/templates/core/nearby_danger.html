@@ -1,0 +1,78 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="container" style="padding:15px;">
+<h2 style="font-weight:900;">Near Danger - 20m Alert</h2>
+<p id="gps-status" style="background:#1A1A1A;color:#aaa;padding:10px;border-radius:8px;">Waiting for GPS... Allow precise location</p>
+<div id="danger-list" style="margin-top:15px;"></div>
+<button onclick="startTracking()" style="margin-top:15px;padding:10px 20px;border-radius:8px;background:#000;color:#fff;">Start 20m Scan</button>
+</div>
+
+<script>
+// haversine in meters
+function distanceM(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = x => x*Math.PI/180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+let hazardsCache = [];
+
+// Load all hazards once - uses your existing endpoint
+fetch('{% url "hazard_map_data" %}')
+ .then(r=>r.json())
+ .then(data=>{
+   hazardsCache = data.hazards || [];
+   console.log("Loaded", hazardsCache.length, "hazards for 20m check");
+ });
+
+function startTracking(){
+ if(!navigator.geolocation){ alert("GPS not supported on this device"); return; }
+ document.getElementById('gps-status').innerText = "Scanning every 2 seconds for hazards within 20m...";
+
+ navigator.geolocation.watchPosition(pos=>{
+   const myLat = pos.coords.latitude;
+   const myLng = pos.coords.longitude;
+   const acc = Math.round(pos.coords.accuracy);
+   
+   document.getElementById('gps-status').innerHTML = `You: ${myLat.toFixed(6)}, ${myLng.toFixed(6)}<br>Accuracy: ±${acc}m | Checking ${hazardsCache.length} hazards`;
+
+   const close = [];
+   hazardsCache.forEach(h=>{
+     const d = distanceM(myLat, myLng, parseFloat(h.latitude), parseFloat(h.longitude));
+     if(d <= 20){ // 20 METERS HERE
+       h._dist = d;
+       close.push(h);
+     }
+   });
+
+   close.sort((a,b)=>a._dist - b._dist);
+   const list = document.getElementById('danger-list');
+   
+   if(close.length === 0){
+     list.innerHTML = `<div style="background:#22c55e;color:white;padding:15px;border-radius:10px;">✅ Safe - No hazard within 20m</div>`;
+     return;
+   }
+
+   list.innerHTML = "";
+   close.forEach(h=>{
+     list.innerHTML += `
+       <div style="background:#ef4444;color:white;padding:15px;border-radius:10px;margin-bottom:10px;border:2px solid #fff;">
+         <b>⚠️ DANGER ${h._dist.toFixed(1)}m AWAY!</b><br>
+         <b>Type:</b> ${h.type}<br>
+         ${h.description||''}<br>
+         <a href="https://www.google.com/maps?q=${h.latitude},${h.longitude}" target="_blank" style="color:white;text-decoration:underline;">Open GPS</a>
+       </div>`;
+   });
+
+   // Vibrate if within 20m
+   if(navigator.vibrate) navigator.vibrate([400,100,400]);
+
+ }, err=>{
+   document.getElementById('gps-status').innerText = "GPS Error: " + err.message + " - Turn on location";
+ }, {enableHighAccuracy:true, maximumAge:0, timeout:15000});
+}
+</script>
+{% endblock %}
