@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><title>Hazard #{{ hazard.id }}</title></head>
+<body>
+<h1>Hazard #{{ hazard.id }} – {{ hazard.get_hazard_type_display }}</h1>
+<p>Status: {{ hazard.get_status_display }}</p>
+<p>Site: {{ hazard.mining_site.name }}</p>
+<p>Reported by: {{ hazard.reporter.username }}</p>
+<p>Reported at: {{ hazard.reported_at }}</p>
+<p>GPS: {{ hazard.latitude }}, {{ hazard.longitude }}</p>
+<p>Description: {{ hazard.description }}</p>
+
+{% if hazard.photo %}
+  <img src="{{ hazard.photo.url }}" style="max-width: 400px;">
+{% endif %}
+
+<h2>Checklist</h2>
+<ul>
+{% for item in checklist %}
+  <li>{% if item.done %}✅{% else %}⬜{% endif %} {{ item.text }}</li>
+{% endfor %}
+</ul>
+
+<h2>Responses</h2>
+{% for r in responses %}
+  <div>
+    <p>{{ r.comment }}</p>
+    {% if r.evidence_photo %}
+      <img src="{{ r.evidence_photo.url }}" style="max-width: 300px;">
+    {% endif %}
+    <small>{{ r.supervisor.username }} – {{ r.created_at }}</small>
+  </div>
+{% empty %}
+  <p>No responses yet.</p>
+{% endfor %}
+
+<p><a href="{% url 'supervisors:resolve_hazard' hazard.id %}">Resolve hazard</a></p>
+</body>
+</html>

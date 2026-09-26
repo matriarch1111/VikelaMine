@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>Hazards</title></head>
+<body>
+<h1>Hazard List</h1>
+<ul>
+{% for h in hazards %}
+  <li>
+    <a href="{% url 'supervisors:hazard_detail' h.id %}">
+      #{{ h.id }} – {{ h.get_hazard_type_display }} – {{ h.status }}
+    </a>
+  </li>
+{% empty %}
+  <li>No hazards.</li>
+{% endfor %}
+</ul>
+</body>
+</html>

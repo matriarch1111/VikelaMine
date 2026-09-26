@@ -1,0 +1,165 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VikelaMine — Supervisor Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'supervisors/css/dashboard.css' %}">
+</head>
+<body>
+<div class="shell">
+  <nav class="nav" id="nav">
+    <div class="brand">
+      <div class="mark">VM</div>
+      <div><b>VikelaMine</b><span>Supervisor console</span></div>
+    </div>
+    <button class="navitem active" data-view="queue">Hazard queue</button>
+    <button class="navitem" data-view="zones">Risk by site</button>
+    <button class="navitem" data-view="alerts">Alerts log</button>
+    <button class="navitem" data-view="reports">Reports</button>
+    <div class="navfoot">
+      <div class="name">{{ request.user.get_full_name|default:request.user.username }}</div>
+      Shift supervisor view
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="menuBtn" id="menuBtn" aria-label="Menu">☰</button>
+      <h1>Supervisor dashboard</h1>
+      <p>Hazards across the sites you cover</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="n">{{ unresolved_count }}</div><div class="l">Open hazards</div></div>
+      <div class="stat"><div class="n">{{ high_risk_count }}</div><div class="l"><span class="dot" style="background:var(--critical)"></span>High-risk open</div></div>
+      <div class="stat"><div class="n">{{ resolved_today_count }}</div><div class="l"><span class="dot" style="background:var(--resolved)"></span>Resolved today</div></div>
+      <div class="stat"><div class="n">{{ pending_tasks_count }}</div><div class="l">Pending checklist items</div></div>
+    </div>
+
+    <div class="content">
+
+      <!-- ===== Hazard queue ===== -->
+      <section class="view" id="view-queue">
+        <div class="queueLayout" style="grid-template-columns:1fr;">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Hazard queue</h2>
+              <div class="filters">
+                <button class="chip active" data-filter="all">All</button>
+                <button class="chip" data-filter="critical">Critical</button>
+                <button class="chip" data-filter="review">Under review</button>
+                <button class="chip" data-filter="overdue">Overdue</button>
+                <button class="chip" data-filter="resolved">Resolved</button>
+              </div>
+            </div>
+            <div>
+              {% for h in recent_hazards %}
+              <a class="qrow" data-status="{{ h.display_status }}" href="{% url 'supervisors:hazard_detail' h.id %}" style="text-decoration:none; color:inherit;">
+                <div>
+                  <div class="id">HZ-{{ h.id }} · {{ h.mining_site.name }}</div>
+                  <div class="desc">{{ h.get_hazard_type_display }} — {{ h.description|truncatechars:60 }}</div>
+                  <div class="meta">Reported by {{ h.reporter.username }}</div>
+                </div>
+                <span class="badge b-{{ h.display_status }}">
+                  <span class="dot"></span>
+                  {% if h.display_status == 'critical' %}Critical
+                  {% elif h.display_status == 'review' %}Under review
+                  {% elif h.display_status == 'overdue' %}Overdue
+                  {% else %}Resolved{% endif %}
+                </span>
+                <div class="time">{{ h.reported_at|date:"d M, H:i" }}</div>
+              </a>
+              {% empty %}
+              <div class="detail-empty">No hazards reported yet for your sites.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Risk by site ===== -->
+      <section class="view" id="view-zones" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h2>Risk by site</h2></div>
+          <div style="padding:16px;">
+            <div class="zoneGrid">
+              {% for row in site_rows %}
+              <div class="zone">
+                <div class="top">
+                  <div><div class="name">{{ row.site.name }}</div><div class="site">{{ row.site.location }}</div></div>
+                  <div class="risk">{{ row.open_count }}</div>
+                </div>
+                <div class="zonebar"><i style="width:{{ row.pct }}%; background:var(--teal)"></i></div>
+                <div class="foot">{{ row.open_count }} open hazard{{ row.open_count|pluralize }}</div>
+              </div>
+              {% empty %}
+              <div class="detail-empty">No sites assigned to you yet.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Alerts log ===== -->
+      <section class="view" id="view-alerts" style="display:none;">
+        <div class="panel">
+          <div class="panel-head"><h2>Alerts log</h2></div>
+          <div>
+            {% for e in alert_events %}
+            <div class="alertRow">
+              <div class="ic" style="background:{% if e.kind == 'resolved' %}var(--resolved-bg){% else %}var(--critical-bg){% endif %}">
+                {% if e.kind == 'resolved' %}✅{% else %}⚠️{% endif %}
+              </div>
+              <div class="txt">
+                <b>{% if e.kind == 'resolved' %}Resolved{% else %}New report{% endif %} — HZ-{{ e.hazard.id }}</b>
+                <p>{{ e.hazard.get_hazard_type_display }} at {{ e.hazard.mining_site.name }}</p>
+              </div>
+              <div class="ts">{{ e.ts|date:"d M, H:i" }}</div>
+            </div>
+            {% empty %}
+            <div class="detail-empty">No recent activity.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Reports ===== -->
+      <section class="view" id="view-reports" style="display:none;">
+        <div class="repGrid">
+          <div class="panel">
+            <div class="panel-head"><h2>Hazards by type</h2></div>
+            <div style="padding:12px 16px;">
+              {% for t in type_counts %}
+              <div class="barRow">
+                <div class="lbl">{{ t.label }}</div>
+                <div class="barTrack"><i style="width:{{ t.pct }}%; background:var(--teal)"></i></div>
+                <div class="val">{{ t.count }}</div>
+              </div>
+              {% empty %}
+              <div class="detail-empty">No data yet.</div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>This week</h2></div>
+            <div style="padding:6px 16px;" class="kpi">
+              <div class="kpiRow"><span>Open hazards</span><span class="n">{{ unresolved_count }}</span></div>
+              <div class="kpiRow"><span>High-risk open</span><span class="n" style="color:var(--critical)">{{ high_risk_count }}</span></div>
+              <div class="kpiRow"><span>Resolved today</span><span class="n" style="color:var(--resolved)">{{ resolved_today_count }}</span></div>
+              <div class="kpiRow"><span>Pending checklist items</span><span class="n">{{ pending_tasks_count }}</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'supervisors/js/dashboard.js' %}"></script>
+</body>
+</html>

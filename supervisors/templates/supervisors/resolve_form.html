@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>Resolve Hazard #{{ hazard.id }}</title></head>
+<body>
+<h1>Resolve Hazard #{{ hazard.id }}</h1>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <h2>Checklist</h2>
+  {% for item in checklist %}
+    <label>
+      <input type="checkbox" name="item_{{ item.id }}" {% if item.done %}checked{% endif %}>
+      {{ item.text }}
+    </label><br>
+  {% endfor %}
+
+  <h2>Response</h2>
+  {{ form.as_p }}
+
+  <button type="submit">Mark as Resolved</button>
+</form>
+</body>
+</html>
