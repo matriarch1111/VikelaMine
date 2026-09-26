@@ -4,11 +4,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign in | VikelaMine</title>
+  <title>Log in | VikelaMine</title>
   <link rel="stylesheet" href="{% static 'supervisors/css/dashboard.css' %}">
   <style>
     .login-wrap{min-height:100vh;display:grid;place-items:center;padding:24px;}
     .login-panel{width:min(100%,380px);}
+    .login-brand{padding:24px 16px 16px;text-align:center;}
+    .login-panel .panel-head{justify-content:center;}
+    .login-panel .panel-head h1{font-weight:700;}
     .login-form{display:grid;gap:10px;padding:18px;}
     .login-form label{font-size:12px;font-weight:600;color:var(--ink-soft);}
     .login-form input{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:6px;background:var(--card2);color:var(--ink);font:inherit;}
@@ -18,7 +21,8 @@
 <body>
   <main class="login-wrap">
     <section class="panel login-panel">
-      <header class="panel-head"><h1>VikelaMine sign in</h1></header>
+      <div class="wordmark login-brand">Vike<span class="brand-accent">la</span>Mine</div>
+      <header class="panel-head"><h1>Log in</h1></header>
       <form class="login-form" method="post">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
@@ -29,7 +33,7 @@
         <label for="{{ form.password.id_for_label }}">Password</label>
         {{ form.password }}
         {{ form.password.errors }}
-        <button class="btn primary" type="submit">Sign in</button>
+        <button class="btn primary" type="submit">Log in</button>
       </form>
     </section>
   </main>

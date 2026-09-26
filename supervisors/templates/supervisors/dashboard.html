@@ -13,16 +13,20 @@
 <div class="shell">
   <nav class="nav" id="nav">
     <div class="brand">
-      <div class="mark">VM</div>
-      <div><b>VikelaMine</b><span>Supervisor console</span></div>
+      <b class="wordmark">Vike<span class="brand-accent">la</span>Mine</b>
     </div>
     <button class="navitem active" data-view="queue">Hazard queue</button>
     <button class="navitem" data-view="zones">Risk by site</button>
     <button class="navitem" data-view="alerts">Alerts log</button>
     <button class="navitem" data-view="reports">Reports</button>
+    <a class="navitem" href="{% url 'supervisors:profile' %}">My profile</a>
     <div class="navfoot">
       <div class="name">{{ request.user.get_full_name|default:request.user.username }}</div>
       Shift supervisor view
+      <form class="logout-form" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="navitem" type="submit">Log out</button>
+      </form>
     </div>
   </nav>
 

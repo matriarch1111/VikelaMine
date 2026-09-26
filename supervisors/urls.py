@@ -5,6 +5,7 @@ app_name = "supervisors"
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+    path("profile/", views.profile, name="profile"),
     path("hazards/", views.hazard_list, name="hazard_list"),
     path("hazards/<int:hazard_id>/", views.hazard_detail, name="hazard_detail"),
     path("hazards/<int:hazard_id>/resolve/", views.resolve_hazard, name="resolve_hazard"),

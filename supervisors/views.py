@@ -106,6 +106,13 @@ def dashboard(request):
 
 
 @supervisor_required
+def profile(request):
+    return render(request, "supervisors/profile.html", {
+        "sites": request.user.mining_sites.all(),
+    })
+
+
+@supervisor_required
 def hazard_list(request):
     sites = _supervisor_sites(request.user)
     status_filter = request.GET.get("status", "")

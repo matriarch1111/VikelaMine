@@ -12,13 +12,13 @@ function showView(name) {
   views.forEach(v => {
     document.getElementById('view-' + v).style.display = (v === name) ? '' : 'none';
   });
-  document.querySelectorAll('.navitem').forEach(b => {
+  document.querySelectorAll('.navitem[data-view]').forEach(b => {
     b.classList.toggle('active', b.dataset.view === name);
   });
   document.getElementById('nav').classList.remove('open');
 }
 
-document.querySelectorAll('.navitem').forEach(b => {
+document.querySelectorAll('.navitem[data-view]').forEach(b => {
   b.onclick = () => showView(b.dataset.view);
 });
 

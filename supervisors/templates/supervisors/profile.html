@@ -1,0 +1,55 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supervisor profile | VikelaMine</title>
+  <link rel="stylesheet" href="{% static 'supervisors/css/dashboard.css' %}">
+</head>
+<body>
+  <main class="profile-page">
+    <header class="profile-head">
+      <a class="wordmark" href="{% url 'supervisors:dashboard' %}">Vike<span class="brand-accent">la</span>Mine</a>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="btn" type="submit">Log out</button>
+      </form>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head"><h1>Supervisor profile</h1></div>
+      <dl class="profile-details">
+        <div class="profile-field">
+          <dt>Full name</dt>
+          <dd>{{ request.user.get_full_name|default:"Not provided" }}</dd>
+        </div>
+        <div class="profile-field">
+          <dt>Username</dt>
+          <dd>{{ request.user.username }}</dd>
+        </div>
+        <div class="profile-field">
+          <dt>Email</dt>
+          <dd>{{ request.user.email|default:"Not provided" }}</dd>
+        </div>
+        <div class="profile-field">
+          <dt>Role</dt>
+          <dd>{{ request.user.get_role_display }}</dd>
+        </div>
+        <div class="profile-field">
+          <dt>Member since</dt>
+          <dd>{{ request.user.date_joined|date:"d M Y" }}</dd>
+        </div>
+      </dl>
+      <div class="panel-head"><h2>Assigned sites</h2></div>
+      <ul class="profile-sites">
+        {% for site in sites %}
+          <li>{{ site.name }}{% if site.location %} · {{ site.location }}{% endif %}</li>
+        {% empty %}
+          <li>No sites assigned</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

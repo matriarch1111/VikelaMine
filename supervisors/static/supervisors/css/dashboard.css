@@ -37,21 +37,21 @@ button{font-family:inherit; cursor:pointer;}
   padding-top:calc(20px + env(safe-area-inset-top,0px));
   border-right:1px solid var(--line);
 }
-.nav .brand{display:flex; align-items:center; gap:9px; padding:2px 8px 20px;}
-.nav .brand .mark{width:26px;height:26px;border-radius:6px;background:var(--teal);
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex:none;}
-.nav .brand b{font-size:15px; letter-spacing:.2px; color:#fff;}
-.nav .brand span{display:block; font-size:10.5px; color:#8B94A3;}
+.nav .brand{display:flex; align-items:center; justify-content:center; padding:2px 8px 20px;}
+.wordmark{color:#fff; font-size:20px; font-weight:700; line-height:1; white-space:nowrap;}
+.brand-accent{color:#ef4b5b;}
+.login-brand{font-size:25px;}
 .navitem{
   display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:7px;
   color:#B7BFC9; background:none; border:none; text-align:left; font-size:13.5px; font-weight:500;
-  width:100%;
+  width:100%; text-decoration:none;
 }
 .navitem svg{width:16px;height:16px; flex:none; opacity:.85;}
 .navitem:hover{background:#1C222B; color:#fff;}
 .navitem.active{background:#1E252E; color:#fff; box-shadow:inset 3px 0 0 var(--teal);}
 .navfoot{margin-top:auto; padding:10px 8px; font-size:11.5px; color:#7C8794; border-top:1px solid var(--line);}
 .navfoot .name{color:#DDE3E8; font-weight:600; font-size:12.5px;}
+.logout-form{margin-top:6px;}
 
 .main{flex:1; min-width:0; display:flex; flex-direction:column;}
 .topbar{
@@ -170,3 +170,17 @@ button{font-family:inherit; cursor:pointer;}
   .repGrid{grid-template-columns:1fr;}
 }
 .menuBtn{display:none; border:none; background:none; padding:4px; margin-right:8px; color:var(--ink);}
+
+.profile-page{width:min(100% - 32px,860px); margin:0 auto; padding:28px 0 40px;}
+.profile-head{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px;}
+.profile-head .wordmark{text-decoration:none;}
+.profile-details{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:16px;}
+.profile-field{min-width:0; padding:12px; border-bottom:1px solid var(--line);}
+.profile-field dt{font-size:11px; color:var(--ink-soft); margin-bottom:5px;}
+.profile-field dd{margin:0; font-weight:600; overflow-wrap:anywhere;}
+.profile-sites{padding:0 28px 20px; color:var(--ink-soft);}
+.profile-sites li{padding:4px 0; color:var(--ink);}
+@media (max-width:560px){
+  .profile-page{width:calc(100% - 24px); padding-top:18px;}
+  .profile-details{grid-template-columns:1fr; gap:4px;}
+}
