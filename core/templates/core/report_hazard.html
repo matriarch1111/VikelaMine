@@ -1,12 +1,10 @@
-```html
 {% extends 'core/base.html' %}
 
 {% block content %}
 
 <!-- Page Header -->
 
-
-
+<div class="wrap" style="padding-top:24px;padding-bottom:8px;">
     <h1 style="font-size: 42px; margin: 20px 0 8px;">
         Report a <span style="color: var(--red);">Hazard</span>
     </h1>
@@ -23,9 +21,12 @@
 
 <form method="POST"
       enctype="multipart/form-data"
+            action="{% url 'report_hazard' %}"
       id="hazardForm">
 
     {% csrf_token %}
+        <input type="hidden" name="client_submission_id" id="clientSubmissionId">
+    <input type="hidden" name="description_language" id="descriptionLanguage" value="en-US">
 
     <!-- Hazard Category -->
 
@@ -73,9 +74,30 @@
             name="description"
             id="description"
             rows="6"
-            required
             placeholder="Describe what happened or what danger you noticed..."></textarea>
 
+    </div>
+
+    <div style="margin-top:25px;">
+        <label for="descriptionLanguageSelect">Report language</label>
+        <select id="descriptionLanguageSelect" aria-label="Report language">
+            <option value="en-US">English</option>
+            <option value="zu-ZA">isiZulu</option>
+            <option value="tn-ZA">Setswana</option>
+            <option value="af-ZA">Afrikaans</option>
+            <option value="ts-ZA">itsonga</option>
+        </select>
+        <label for="translationTargetLanguage">Translate report text to</label>
+        <select id="translationTargetLanguage" aria-label="Translation target language">
+            <option value="en-US">English</option>
+            <option value="zu-ZA">isiZulu</option>
+            <option value="tn-ZA">Setswana</option>
+            <option value="af-ZA">Afrikaans</option>
+            <option value="ts-ZA">itsonga</option>
+        </select>
+        <button type="button" id="translateReportDescription" class="btn btn-ghost" style="margin-top:8px;">Translate report text</button>
+        <button type="button" id="speakReportDescription" class="btn btn-ghost" style="margin-top:8px;">Speak report text</button>
+        <p id="reportTranslation" role="status" aria-live="polite" style="font-size:14px;color:var(--muted);"></p>
     </div>
 
 
@@ -273,6 +295,8 @@
 
     </div>
 
+    <p id="syncStatus" role="status" aria-live="polite" style="color: var(--muted); font-size: 13px; margin-top: 12px;"></p>
+
 </form>
 
 </div>
@@ -438,6 +462,13 @@ function startVoiceRecording() {
         return;
     }
 
+    if (typeof window.MediaRecorder !== "function") {
+        status.textContent =
+            "Audio recording is not supported by this browser. Try a current version of Chrome or Edge.";
+
+        return;
+    }
+
 
     navigator.mediaDevices
         .getUserMedia({ audio: true })
@@ -468,12 +499,12 @@ function startVoiceRecording() {
             // When recording stops
 
             mediaRecorder.onstop =
-                function() {
+                async function() {
 
                     audioBlob =
                         new Blob(
                             audioChunks,
-                            { type: "audio/webm" }
+                            { type: mediaRecorder.mimeType || audioChunks[0]?.type || "audio/webm" }
                         );
 
 
@@ -523,7 +554,26 @@ function startVoiceRecording() {
 
 
                     status.textContent =
-                        "Voice recording captured. Press Play to listen.";
+                        "Voice note captured. Transcribing it for the report...";
+
+                    const transcriptionData = new FormData();
+                    transcriptionData.append("audio", audioBlob, "voice-note.webm");
+                    transcriptionData.append("language", reportLanguage());
+                    try {
+                        const response = await fetch("{% url 'transcribe_voice_note' %}", {
+                            method: "POST",
+                            body: transcriptionData,
+                            credentials: "same-origin",
+                            headers: { "X-CSRFToken": getCookie("csrftoken") }
+                        });
+                        const result = await response.json();
+                        if (!response.ok) throw new Error(result.error || "Transcription failed.");
+                        const description = document.getElementById("description");
+                        description.value = [description.value.trim(), result.transcript].filter(Boolean).join("\n");
+                        status.textContent = "Voice note saved and transcribed. Review the text before submitting.";
+                    } catch (error) {
+                        status.textContent = "Voice note is saved for submission, but transcription failed: " + error.message;
+                    }
 
                 };
 
@@ -547,9 +597,9 @@ function startVoiceRecording() {
 
             console.error(error);
 
-
-            status.textContent =
-                "Microphone access was denied or unavailable.";
+            status.textContent = error.name === "NotAllowedError"
+                ? "Microphone permission was denied. Allow microphone access in your browser and try again."
+                : "Could not start microphone recording: " + error.message;
 
         });
 
@@ -824,7 +874,237 @@ function getLocation() {
 
 }
 
+function reportLanguage() {
+    return document.getElementById("descriptionLanguage").value || "en-US";
+}
+
+const reportLanguageSelect = document.getElementById("descriptionLanguageSelect");
+const descriptionLanguageInput = document.getElementById("descriptionLanguage");
+const savedReportLanguage = localStorage.getItem("vikela-language") || "en-US";
+if (Array.from(reportLanguageSelect.options).some(option => option.value === savedReportLanguage)) {
+    reportLanguageSelect.value = savedReportLanguage;
+    descriptionLanguageInput.value = savedReportLanguage;
+}
+reportLanguageSelect.addEventListener("change", () => {
+    descriptionLanguageInput.value = reportLanguageSelect.value;
+    localStorage.setItem("vikela-language", reportLanguageSelect.value);
+});
+document.getElementById("language").addEventListener("change", event => {
+    if (Array.from(reportLanguageSelect.options).some(option => option.value === event.target.value)) {
+        reportLanguageSelect.value = event.target.value;
+        descriptionLanguageInput.value = event.target.value;
+    }
+});
+
+document.getElementById("translateReportDescription").addEventListener("click", async () => {
+    const text = document.getElementById("description").value.trim();
+    const targetLanguage = document.getElementById("translationTargetLanguage").value;
+    const output = document.getElementById("reportTranslation");
+    if (!text) {
+        output.textContent = "Add report text before translating.";
+        return;
+    }
+    output.textContent = "Translating report text...";
+    try {
+        const response = await fetch("{% url 'translate_report_text' %}", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+            body: JSON.stringify({text, source_language: reportLanguage(), target_language: targetLanguage})
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Translation failed.");
+        output.textContent = result.translation;
+    } catch (error) {
+        output.textContent = error.message;
+    }
+});
+document.getElementById("speakReportDescription").addEventListener("click", () => {
+    const description = document.getElementById("description").value.trim();
+    const translation = document.getElementById("reportTranslation").textContent.trim();
+    const text = translation || description;
+    if (!text) {
+        document.getElementById("reportTranslation").textContent = "Add report text before speaking it.";
+        return;
+    }
+    if (!("speechSynthesis" in window)) {
+        document.getElementById("reportTranslation").textContent = "Text-to-speech is not supported by this browser.";
+        return;
+    }
+    speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = translation ? document.getElementById("translationTargetLanguage").value : reportLanguage();
+    speechSynthesis.speak(speech);
+});
+
+function createSubmissionId() {
+    if (crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, character =>
+        (character ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> character / 4).toString(16)
+    );
+}
+
+function openReportQueue() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open("vikela-report-queue", 1);
+        request.onupgradeneeded = () => request.result.createObjectStore("reports", { keyPath: "id" });
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function saveQueuedReport(formData) {
+    const database = await openReportQueue();
+    const report = {
+        id: formData.get("client_submission_id"),
+        entries: Array.from(formData.entries()),
+        savedAt: Date.now()
+    };
+
+    await new Promise((resolve, reject) => {
+        const transaction = database.transaction("reports", "readwrite");
+        transaction.objectStore("reports").put(report);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+}
+
+async function getQueuedReports() {
+    const database = await openReportQueue();
+    const reports = await new Promise((resolve, reject) => {
+        const request = database.transaction("reports").objectStore("reports").getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return reports;
+}
+
+async function removeQueuedReport(id) {
+    const database = await openReportQueue();
+    await new Promise((resolve, reject) => {
+        const transaction = database.transaction("reports", "readwrite");
+        transaction.objectStore("reports").delete(id);
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+}
+
+async function sendQueuedReport(report) {
+    const formData = new FormData();
+    report.entries.forEach(([key, value]) => formData.append(key, value));
+    const response = await fetch(hazardForm.action, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+
+    if (!response.ok) {
+        throw new Error("Report sync failed with status " + response.status);
+    }
+
+    const result = await response.json();
+    if (!result.ok) {
+        throw new Error(result.error || "Report sync failed.");
+    }
+
+    await removeQueuedReport(report.id);
+}
+
+async function syncQueuedReports() {
+    if (!navigator.onLine) return;
+
+    try {
+        const reports = await getQueuedReports();
+        if (!reports.length) return;
+
+        syncStatus.textContent = "Syncing " + reports.length + " saved report(s)...";
+        for (const report of reports) {
+            await sendQueuedReport(report);
+        }
+        syncStatus.textContent = "Saved reports synced successfully.";
+    } catch (error) {
+        console.error(error);
+        syncStatus.textContent = "Some reports are still saved on this device and will retry when connected.";
+    }
+}
+
+const hazardForm = document.getElementById("hazardForm");
+const syncStatus = document.getElementById("syncStatus");
+const submissionIdInput = document.getElementById("clientSubmissionId");
+submissionIdInput.value = createSubmissionId();
+
+hazardForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const submitButton = hazardForm.querySelector('[type="submit"]');
+    const originalLabel = submitButton.textContent;
+    const formData = new FormData(hazardForm);
+    if (capturedPhotoBlob) {
+        formData.set("photo", capturedPhotoBlob, "hazard-capture.jpg");
+    }
+    if (audioBlob) {
+        const extension = audioBlob.type.includes("ogg") ? "ogg" : audioBlob.type.includes("mp4") ? "m4a" : "webm";
+        formData.set("voice_note", audioBlob, "voice-note." + extension);
+    }
+    submitButton.disabled = true;
+    syncStatus.textContent = "Saving report...";
+
+    try {
+        if (!navigator.onLine) {
+            await saveQueuedReport(formData);
+            hazardForm.reset();
+            submissionIdInput.value = createSubmissionId();
+            capturedPhotoBlob = null;
+            audioBlob = null;
+            syncStatus.textContent = "Report saved on this device. It will sync when you are connected.";
+            return;
+        }
+
+        const response = await fetch(hazardForm.action, {
+            method: "POST",
+            body: formData,
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+            throw new Error(result.error || "Report could not be submitted.");
+        }
+        window.location.assign(result.redirect_url);
+    } catch (error) {
+        if (error instanceof TypeError || !navigator.onLine) {
+            try {
+                await saveQueuedReport(formData);
+                hazardForm.reset();
+                submissionIdInput.value = createSubmissionId();
+                capturedPhotoBlob = null;
+                audioBlob = null;
+                syncStatus.textContent = "Connection lost. Report saved on this device and will sync when connected.";
+            } catch (queueError) {
+                console.error(queueError);
+                syncStatus.textContent = "Could not save locally. Keep this page open and try again.";
+            }
+        } else {
+            console.error(error);
+            syncStatus.textContent = error.message;
+        }
+    } finally {
+        submitButton.disabled = false;
+        if (syncStatus.textContent === "Saving report...") {
+            syncStatus.textContent = originalLabel;
+        }
+    }
+});
+
+window.addEventListener("online", syncQueuedReports);
+syncQueuedReports();
+
 </script>
 
 {% endblock %}
-```

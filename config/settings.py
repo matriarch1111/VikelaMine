@@ -1,10 +1,16 @@
-"""
-Django settings for config project.
-"""
-
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv() # loads.env
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+print(f"DEBUG KEY LOADED: {bool(OPENAI_API_KEY)}") # check your terminal
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = 'django-insecure-uqf=4%q6#9r##9ih^^*w3cj#=ty&7t*!pzkjwxyl-ev$#6h$nn'
 DEBUG = True
@@ -97,9 +103,14 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Custom User from core app - VikelaMine
 AUTH_USER_MODEL = 'core.User'
 
-# Email - Fixed (was MAILERS, should be EMAIL_BACKEND)
-# Email - Fixed (was MAILERS, should be EMAIL_BACKEND)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Use the console backend locally; configure SMTP through environment variables for real notifications.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'true').lower() == 'true'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@vikelamine.local')
 
 # Login URLs - FIXES your panic button 404
 LOGIN_URL = '/login/'
