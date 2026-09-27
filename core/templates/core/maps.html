@@ -7,81 +7,203 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    body { margin:0; padding:0; }
-    #map { height: 100vh; width: 100vw; } /* THIS fixes your blank */
+    body { width:100%; min-width:320px; margin:0; padding:0; overflow:hidden; }
+    #map { height:100vh; height:100dvh; width:100%; }
+    #map-status { position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:500; max-width:calc(100vw - 24px); padding:10px 14px; background:#fff; color:#222; border:1px solid #bbb; font:14px sans-serif; }
+    #map-status[hidden] { display:none; }
+    #location-status { position:absolute; right:12px; top:64px; z-index:500; max-width:calc(100vw - 80px); padding:8px 10px; background:#fff; color:#222; border:1px solid #bbb; font:13px sans-serif; }
+    #location-status[hidden] { display:none; }
+    .map-locate-button { display:grid; place-items:center; width:44px; height:44px; border:0; background:#fff; color:#1769aa; cursor:pointer; }
+    .map-locate-button svg { width:23px; height:23px; }
+    .user-location-pin { background:transparent; border:0; }
+    .user-location-pin svg { display:block; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); }
   </style>
 </head>
 <body>
 <div id="map"></div>
+<div id="map-status" role="status" aria-live="polite" hidden></div>
+<div id="location-status" role="status" aria-live="polite" hidden></div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// 1. SPU Kimberley - fixes Africa view
-const map = L.map('map').setView([-28.7414, 24.7716], 16);
-
-// 2. NO API KEY tile - fixes "API key required"
+const emptyMapCenter = [0, 0];
+const map = L.map('map').setView(emptyMapCenter, 2);
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
   attribution: 'Esri',
   maxZoom: 19
 }).addTo(map);
 
-// 3. Test pin - proves map works even with no DB data
-L.marker([-28.7414, 24.7716]).addTo(map)
-  .bindPopup("<b>SPU Campus</b><br>VikelaMine Test").openPopup();
+const statusElement = document.getElementById('map-status');
+const locationStatusElement = document.getElementById('location-status');
+const setMapStatus = message => {
+  statusElement.textContent = message;
+  statusElement.hidden = !message;
+};
 
-fetch('/api/hazard-map-data/')
-  .then(r => r.json())
-  .then(d => {
+let userMarker = null;
+let accuracyCircle = null;
+const userLocationIcon = L.divIcon({
+  className: 'user-location-pin',
+  html: '<svg viewBox="0 0 28 38" width="28" height="38" aria-hidden="true"><path d="M14 37S2 21 2 14a12 12 0 1 1 24 0c0 7-12 23-12 23Z" fill="#1976d2" stroke="#fff" stroke-width="2"/><circle cx="14" cy="14" r="4" fill="#fff"/></svg>',
+  iconSize: [28, 38],
+  iconAnchor: [14, 37]
+});
 
-    console.log("Hazards from DB:", d);
-
-    // =========================
-    // HAZARDS
-    // =========================
-
-    d.hazards.forEach(h => {
-
-      L.marker([
-        h.latitude,
-        h.longitude
-      ])
+function updateUserLocation(latitude, longitude, accuracy) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
+      || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  const point = L.latLng(latitude, longitude);
+  if (!userMarker) {
+    userMarker = L.marker(point, {icon: userLocationIcon, zIndexOffset: 1000})
       .addTo(map)
-      .bindPopup(`
-        <b>Hazard: ${h.type}</b><br>
-        ${h.description}<br><br>
-        <b>Status:</b> ${h.status}<br>
-        <b>Priority:</b> ${h.priority}
-      `);
+      .bindPopup('Your current location');
+  } else {
+    userMarker.setLatLng(point);
+  }
+  if (Number.isFinite(accuracy) && accuracy > 0) {
+    if (!accuracyCircle) {
+      accuracyCircle = L.circle(point, {radius: accuracy, color: '#1976d2', fillColor: '#3298dc', fillOpacity: 0.12, weight: 1}).addTo(map);
+    } else {
+      accuracyCircle.setLatLng(point);
+      accuracyCircle.setRadius(accuracy);
+    }
+  }
+  return point;
+}
 
-    });
+const locateControl = L.control({position: 'topright'});
+locateControl.onAdd = function() {
+  const button = L.DomUtil.create('button', 'map-locate-button');
+  button.type = 'button';
+  button.title = 'Show my location';
+  button.setAttribute('aria-label', 'Show my location');
+  button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2"></circle><path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path></svg>';
+  L.DomEvent.disableClickPropagation(button);
+  L.DomEvent.on(button, 'click', function(event) {
+    L.DomEvent.preventDefault(event);
+    if (!navigator.geolocation) {
+      locationStatusElement.textContent = 'This browser does not support location.';
+      locationStatusElement.hidden = false;
+      return;
+    }
+    locationStatusElement.textContent = 'Getting your location...';
+    locationStatusElement.hidden = false;
+    navigator.geolocation.getCurrentPosition(position => {
+      const point = updateUserLocation(position.coords.latitude, position.coords.longitude, position.coords.accuracy);
+      if (!point) {
+        locationStatusElement.textContent = 'Your device returned invalid coordinates.';
+        return;
+      }
+      map.setView(point, Math.max(map.getZoom(), 16));
+      locationStatusElement.textContent = `You are here (accuracy ±${Math.round(position.coords.accuracy)} m).`;
+    }, error => {
+      const reason = error.code === error.PERMISSION_DENIED ? 'Allow location access in your browser.' : 'Location could not be determined.';
+      locationStatusElement.textContent = reason;
+    }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 0});
+  });
+  return button;
+};
+locateControl.addTo(map);
 
+function coordinatesFor(record) {
+  if (record.latitude == null || record.longitude == null
+      || String(record.latitude).trim() === '' || String(record.longitude).trim() === '') {
+    return null;
+  }
+  const latitude = Number(record.latitude);
+  const longitude = Number(record.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
+      || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return null;
+  }
+  return [latitude, longitude];
+}
 
-    // =========================
-    // MINING SITES
-    // =========================
+function popupContent(title, rows) {
+  const content = document.createElement('div');
+  const heading = document.createElement('strong');
+  heading.textContent = title;
+  content.appendChild(heading);
+  rows.forEach(([label, value]) => {
+    const line = document.createElement('div');
+    const labelNode = document.createElement('b');
+    labelNode.textContent = `${label}: `;
+    const valueNode = document.createElement('span');
+    valueNode.textContent = value == null ? '' : String(value);
+    line.append(labelNode, valueNode);
+    content.appendChild(line);
+  });
+  return content;
+}
 
-    d.sites.forEach(s => {
-
-      L.marker([
-        s.latitude,
-        s.longitude
-      ])
-      .addTo(map)
-      .bindPopup(`
-        <b>${s.name}</b><br>
-        Mining Site<br>
-        Status: ${s.status}
-      `);
-
-    });
-
+fetch("{% url 'hazard_map_data' %}")
+  .then(response => {
+    if (!response.ok) throw new Error(`Location API returned HTTP ${response.status}.`);
+    return response.json();
   })
-  .catch(err => console.error(err));
-// 5. Live blue dot - your actual location tracking (minemap)
+  .then(data => {
+    if (!Array.isArray(data.hazards) || !Array.isArray(data.sites)) {
+      throw new Error('Location API response is missing hazards or sites.');
+    }
+
+    const visibleCoordinates = [];
+    data.hazards.forEach(hazard => {
+      const coordinates = coordinatesFor(hazard);
+      if (!coordinates) {
+        console.warn('Skipping hazard with missing or invalid coordinates.', hazard.id);
+        return;
+      }
+      const resolved = hazard.status === 'resolved';
+      L.circleMarker(coordinates, {
+        radius: 9,
+        color: resolved ? '#26733b' : '#c54724',
+        fillColor: resolved ? '#45a95e' : '#e76f28',
+        fillOpacity: 0.9,
+        weight: 2
+      }).addTo(map).bindPopup(popupContent(`Hazard: ${hazard.type || 'Unknown'}`, [
+        ['Description', hazard.description],
+        ['Status', resolved ? 'Resolved' : (hazard.status || 'Unresolved')],
+        ['Priority', hazard.priority],
+        ['Coordinates', `${coordinates[0]}, ${coordinates[1]}`]
+      ]));
+      visibleCoordinates.push(coordinates);
+    });
+
+    data.sites.forEach(site => {
+      const coordinates = coordinatesFor(site);
+      if (!coordinates) {
+        console.warn('Skipping mining site with missing or invalid coordinates.', site.name);
+        return;
+      }
+      L.marker(coordinates).addTo(map).bindPopup(popupContent(site.name || 'Mining site', [
+        ['Status', site.status],
+        ['Coordinates', `${coordinates[0]}, ${coordinates[1]}`]
+      ]));
+      visibleCoordinates.push(coordinates);
+    });
+
+    if (visibleCoordinates.length) {
+      map.fitBounds(L.latLngBounds(visibleCoordinates), {padding: [36, 36], maxZoom: 15});
+      setMapStatus('');
+    } else {
+      map.setView(emptyMapCenter, 2);
+      setMapStatus('No hazards or mining sites with saved coordinates yet.');
+    }
+  })
+  .catch(error => {
+    console.error('Could not load map locations:', error.message);
+    setMapStatus('Could not load saved map locations. Please try again later.');
+  });
+
 map.locate({setView:false, watch:true, enableHighAccuracy:true});
-map.on('locationfound', e => {
-  L.circleMarker(e.latlng, {radius:8, color:'blue', fillOpacity:1}).addTo(map);
+map.on('locationfound', event => {
+  updateUserLocation(event.latlng.lat, event.latlng.lng, event.accuracy);
+});
+map.on('locationerror', event => {
+  const reason = event.code === 1 ? 'Allow location access in your browser.' : 'Location could not be determined.';
+  locationStatusElement.textContent = reason;
+  locationStatusElement.hidden = false;
 });
 </script>
 </body>

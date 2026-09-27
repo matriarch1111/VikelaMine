@@ -1,10 +1,13 @@
 from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static
 from core import views
 
 urlpatterns = [
 
     # Home
     path('', views.home, name='home'),
+    path('sw.js', views.service_worker, name='service_worker'),
 
     # Authentication
     path('login/', views.login_view, name='login'),
@@ -32,4 +35,15 @@ urlpatterns = [
     path('check-nearby-hazards/', views.check_nearby_hazards, name='check_nearby_hazards'),
     path('hazard-map-data/', views.hazard_map_data, name='hazard_map_data'),
     path('settings/', views.settings_view, name='settings'),
+    path('ai-assistance/', views.redirect_ai_assistance, name='ai_assistance'),
+    path('api/ai-chat/', views.ai_chat, name='ai_chat'),
+    path('api/translate-report/', views.translate_report_text, name='translate_report_text'),
+    path('api/translate-interface/', views.translate_interface, name='translate_interface'),
+    path('api/transcribe-voice/', views.transcribe_voice_note, name='transcribe_voice_note'),
+    path('api/text-to-speech/', views.text_to_speech, name='text_to_speech'),
+    path('api/sync-report/', views.sync_report, name='sync_report'),
+    path('api/translate-page/', views.translate_page_api, name='translate_page_api'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
