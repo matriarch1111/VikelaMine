@@ -27,6 +27,9 @@ HAZARD_TYPES = [('open_hole','Open Hole'),('crack','Crack / Structural'),('gas',
 class Hazard(models.Model):
     hazard_type = models.CharField(max_length=30, choices=HAZARD_TYPES)
     description = models.TextField()
+    description_language = models.CharField(max_length=12, default='en-US')
+    voice_note = models.FileField(upload_to='voice_notes/', blank=True, null=True)
+    client_submission_id = models.UUIDField(null=True, blank=True, unique=True, editable=False)
     photo = models.ImageField(upload_to='hazards/', blank=True, null=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)

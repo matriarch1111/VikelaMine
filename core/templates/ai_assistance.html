@@ -1,0 +1,98 @@
+
+
+Voice input · HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Voice Input Demo — Rocky Widget</title>
+<style>
+  body { font-family: system-ui, sans-serif; background:#0f1115; color:#fff; padding:2rem; }
+  .widget { max-width: 420px; margin:auto; background:#1a1d24; border-radius:12px; padding:1rem; }
+  .row { display:flex; gap:8px; margin-top:1rem; }
+  input { flex:1; padding:10px; border-radius:8px; border:1px solid #333; background:#111; color:#fff; }
+  button { border:none; border-radius:8px; padding:10px 14px; cursor:pointer; }
+  .mic { background:#222; color:#fff; }
+  .mic.listening { background:#c0392b; animation:pulse 1s infinite; }
+  .send { background:#e67e22; color:#fff; font-weight:600; }
+  .status { font-size:12px; color:#999; margin-top:6px; }
+  @keyframes pulse { 0%{opacity:1} 50%{opacity:.5} 100%{opacity:1} }
+</style>
+</head>
+<body>
+ 
+<div class="widget">
+  <div class="row">
+    <input id="chatInput" type="text" placeholder="Ask about selected report" />
+    <button id="micBtn" class="mic">🎤</button>
+    <button class="send">Send</button>
+  </div>
+  <div id="status" class="status"></div>
+</div>
+ 
+<script>
+const micBtn = document.getElementById('micBtn');
+const input = document.getElementById('chatInput');
+const status = document.getElementById('status');
+ 
+// Check browser support first, same as your current fallback message
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+ 
+if (!SpeechRecognition) {
+  status.textContent = 'Voice input is not supported in this browser.';
+  micBtn.disabled = true;
+  micBtn.style.opacity = 0.4;
+} else {
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;      // stop after one utterance
+  recognition.interimResults = true;   // show partial text while speaking
+  recognition.lang = 'en-US';
+ 
+  let listening = false;
+ 
+  micBtn.addEventListener('click', () => {
+    if (listening) {
+      recognition.stop();
+      return;
+    }
+    try {
+      recognition.start();
+    } catch (e) {
+      // start() throws if called twice in a row too quickly
+      console.error(e);
+    }
+  });
+ 
+  recognition.onstart = () => {
+  listening = true;
+  micBtn.textContent = '⏺';           // change icon
+  micBtn.style.backgroundColor = '#c0392b';
+  micBtn.style.color = '#fff';
+  status.textContent = 'Listening…';
+};
+ 
+  recognition.onresult = (event) => {
+  status.textContent = 'Transcribing…';
+  let transcript = '';
+  for (let i = 0; i < event.results.length; i++) {
+    transcript += event.results[i][0].transcript;
+  }
+  input.value = transcript;
+};
+ 
+  recognition.onerror = (event) => {
+    status.textContent = 'Mic error: ' + event.error;
+  };
+ 
+  recognition.onend = () => {
+  listening = false;
+  micBtn.textContent = '🎤';           // revert icon
+  micBtn.style.backgroundColor = '';   // revert color
+  status.textContent = '';
+};
+}
+</script>
+ 
+</body>
+</html>
+ 

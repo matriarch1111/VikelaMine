@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,26 +9,45 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="max-w-[420px] mx-auto bg-black min-h-screen relative pb-20">
-<div class="bg-black text-white p-3 flex justify-between items-center">
+<div class="bg-black text-white p-3 flex flex-wrap justify-between items-center gap-2">
   <h1 class="font-black text-xl">Vike<span class="text-red-600">la</span>Mine</h1>
-  <span class="text-[10px] bg-green-600 px-2 py-0.5 rounded-full">● System Online</span>
+  <div class="flex flex-wrap items-center gap-2"><select id="language" name="language" aria-label="Preferred language" class="w-auto rounded bg-zinc-800 px-2 py-2 text-xs"><option value="en-US">English</option><option value="zu-ZA">isiZulu</option><option value="af-ZA">Afrikaans</option><option value="tn-ZA">Setswana</option><option value="ts-ZA">itsonga</option></select><span id="languageStatus" role="status" aria-live="polite" class="sr-only"></span><span class="text-[10px] bg-green-600 px-2 py-0.5 rounded-full">● System Online</span><button type="button" onclick="sendAppSOS(this)" class="bg-red-600 text-white px-3 py-2 text-xs font-bold rounded">SOS</button></div>
 </div>
+<form hidden>{% csrf_token %}</form>
 {% block app_content %}{% endblock %}
 <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-white flex justify-around py-2 border-t z-50">
   <a href="/app/" class="text-center text-[10px]"><i class="fa-solid fa-house block text-lg"></i>Home</a>
   <a href="/app/reports/" class="text-center text-[10px]"><i class="fa-solid fa-file-lines block text-lg"></i>My Reports</a>
-  <a href="#" id="sos-nav" class="text-center text-[10px] text-red-600 font-bold"><div class="bg-red-600 text-white text-[8px] px-1 rounded">SOS</div>SOS</a>
   <a href="/app/documents/" class="text-center text-[10px]"><i class="fa-solid fa-folder block text-lg"></i>Documents</a>
 </nav>
+  <style>
+  #rockyLauncher{position:fixed;right:16px;bottom:66px;z-index:999;min-width:54px;min-height:54px;border-radius:50%;border:1px solid #2E353F;background:#E76F28;color:#fff;font-size:26px}
+  #rockyPanel{position:fixed;right:12px;bottom:126px;z-index:998;width:min(370px,calc(100vw - 24px));height:min(500px,calc(100dvh - 150px));display:none;flex-direction:column;background:#232A34;color:#fff;border:1px solid #2E353F;border-radius:12px;overflow:hidden}
+  .rocky-message{max-width:88%;padding:9px 12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+  .rocky-message.assistant{align-self:flex-start;background:#2A323D}.rocky-message.user{align-self:flex-end;background:#E76F28}
+  </style>
+  <button id="rockyLauncher" type="button" aria-expanded="false" aria-controls="rockyPanel" aria-label="Open Rocky assistant">🪨</button>
+  <section id="rockyPanel" role="dialog" aria-modal="false" aria-labelledby="rockyTitle">
+    <header class="flex items-center gap-2 bg-[#151A21] p-3"><strong id="rockyTitle" data-translate="Rocky">Rocky</strong><span data-translate="Report assistant">Report assistant</span><button id="rockyClose" type="button" class="ml-auto" aria-label="Close Rocky assistant">✕</button></header>
+    <div id="rockyMessages" aria-live="polite" class="flex-1 overflow-y-auto p-3"><p class="rocky-message assistant" data-translate="Rocky greeting">Share or select a report first. Rocky only uses that report.</p></div>
+    <form id="rockyForm" class="flex gap-2 border-t border-zinc-700 p-2"><input id="rockyQuestion" class="min-w-0 flex-1" maxlength="1000" placeholder="Ask about the selected report" aria-label="Question for Rocky"><button id="rockyVoice" type="button" class="px-3" aria-label="Ask Rocky by voice">🎤</button><button id="rockySend" type="submit" class="bg-[#E76F28] px-3 py-2 font-semibold" data-translate="Send">Send</button></form>
+    <p id="rockyStatus" role="status" aria-live="polite" class="sr-only"></p>
+  </section>
 <script>
-document.getElementById('sos-nav').onclick = (e)=>{
-  e.preventDefault();
-  if(!confirm("SOS ALERT? This will alert Supervisors, Security, Admins + trigger sirens with your GPS location")) return;
-  navigator.geolocation.getCurrentPosition(p=>{
-    fetch('/sos-alert/',{method:'POST',headers:{'X-CSRFToken':'{{csrf_token}}','Content-Type':'application/json'},body:JSON.stringify({lat:p.coords.latitude,lng:p.coords.longitude})})
-  .then(()=>{alert("🚨 SOS SENT! Location: "+p.coords.latitude.toFixed(5)+","+p.coords.longitude.toFixed(5))})
-  })
+function appCookie(name){const found=document.cookie.split(';').map(value=>value.trim()).find(value=>value.startsWith(name+'='));return found?decodeURIComponent(found.slice(name.length+1)):'';}
+async function sendAppSOS(button){
+  if(!confirm('Send an emergency alert to the site dashboard?'))return;
+  const original=button.textContent;button.disabled=true;button.textContent='Sending...';
+  const location=navigator.geolocation?await new Promise(resolve=>navigator.geolocation.getCurrentPosition(p=>resolve({latitude:p.coords.latitude,longitude:p.coords.longitude}),()=>resolve(null),{enableHighAccuracy:true,timeout:10000})):null;
+  try{
+    const response=await fetch('/sos-alert/',{method:'POST',credentials:'same-origin',headers:{'X-CSRFToken':appCookie('csrftoken'),'Content-Type':'application/json'},body:JSON.stringify(location||{})});
+    const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'Alert failed');
+    alert(location?'Emergency alert recorded with GPS.':'Emergency alert recorded without GPS.');
+  }catch(error){alert('SOS could not reach the server. Contact local emergency services now.');}
+  finally{button.disabled=false;button.textContent=original;}
 }
 </script>
+<script src="{% static 'js/site-language.js' %}"></script>
+<script src="{% static 'js/rocky-assistant.js' %}"></script>
 </body>
 </html>

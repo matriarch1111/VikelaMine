@@ -1,15 +1,104 @@
 {% extends 'core/base.html' %}{% block content %}
-<div class="max-w-6xl mx-auto p-4 bg-[#F6F1E7] border border-[#E8E0D1] mt-4 rounded-[12px] text-black">
-<div class="flex flex-wrap gap-2 text-xs mb-4">
-<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Type</option></select>
-<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Severity</option></select>
-<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Status</option></select>
-<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Employee</option></select>
-<select class="border border-[#E8E0D1] p-2 bg-white text-black rounded"><option>Department</option></select>
-<input type="date" class="border border-[#E8E0D1] p-2 bg-white text-black rounded">
-<input placeholder="Search picture" class="border border-[#E8E0D1] p-2 bg-white text-black rounded placeholder:text-black">
-</div>
-<table class="w-full text-xs text-left text-black"><tr class="font-bold border-b border-[#E8E0D1] text-black"><th>Who</th><th>When</th><th>Type</th><th>Status</th><th>Progress</th><th>Photo</th></tr>
-<tr class="border-b border-[#E8E0D1] text-black"><td>JD - Mining</td><td>Today 10:42</td><td>Fall</td><td>Fixing</td><td><div class="w-20 h-2 bg-[#E8E0D1]"><div class="h-2 bg-[#D95D26] w-[40%]"></div></div></td><td>📷</td></tr>
-</table>
-</div>{% endblock %}
+<main class="max-w-6xl mx-auto p-4 md:p-6">
+	<h1 class="text-2xl font-black mb-4">Hazard reports</h1>
+	<div class="flex flex-wrap gap-2 mb-4 text-sm" aria-label="Filter hazard reports">
+		<select id="reportFilterType" class="w-auto"><option value="">All types</option><option value="open_hole">Open hole</option><option value="crack">Crack / structural</option><option value="gas">Gas / fumes</option><option value="equipment">Equipment fault</option><option value="fall">Fall risk</option><option value="flooding">Flooding / water</option><option value="unstable_ground">Unstable ground</option><option value="electrical">Electrical</option><option value="other">Other</option></select>
+		<select id="reportFilterPriority" class="w-auto"><option value="">All severity</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+		<select id="reportFilterStatus" class="w-auto"><option value="">All statuses</option><option value="reported">Reported</option><option value="investigating">Investigating</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option></select>
+		<input id="reportFilterDate" type="date" class="w-auto" aria-label="Filter by report date">
+		<input id="reportFilterSearch" type="search" class="w-full sm:w-64" placeholder="Search description, person, or location" aria-label="Search reports">
+	</div>
+	<div class="overflow-x-auto bg-white text-black border border-[#E8E0D1] rounded-[8px]">
+		<table class="w-full text-sm text-left">
+			<thead><tr class="font-bold border-b border-[#E8E0D1] bg-[#F6F1E7]"><th class="p-3">Who</th><th class="p-3">When</th><th class="p-3">Type / status</th><th class="p-3">Report text and translation</th><th class="p-3">Voice note</th></tr></thead>
+			<tbody>
+			{% for h in hazards %}
+				<tr class="border-b border-[#E8E0D1] align-top report-row" data-report-text="{{ h.description }}" data-report-language="{{ h.description_language }}" data-report-type="{{ h.hazard_type }}" data-report-priority="{{ h.priority }}" data-report-status="{{ h.status }}" data-report-date="{{ h.reported_at|date:'Y-m-d' }}" data-report-person="{% if h.reported_by %}{{ h.reported_by.get_full_name|default:h.reported_by.username }}{% endif %}" data-report-location="{% if h.latitude and h.longitude %}{{ h.latitude }}, {{ h.longitude }}{% endif %}">
+					<td class="p-3">{% if h.reported_by %}{{ h.reported_by.get_full_name|default:h.reported_by.username }}{% else %}Guest{% endif %}</td>
+					<td class="p-3 whitespace-nowrap">{{ h.reported_at|date:"d M Y H:i" }}</td>
+					<td class="p-3">{{ h.get_hazard_type_display }}<br>{{ h.status|title }}</td>
+					<td class="p-3 min-w-[280px]">
+						<p class="report-original whitespace-normal">{{ h.description }}</p>
+						<div class="flex flex-wrap items-center gap-2">
+							<select class="report-target w-auto" aria-label="Translation language"><option value="en-US">English</option><option value="zu-ZA">isiZulu</option><option value="tn-ZA">Setswana</option><option value="af-ZA">Afrikaans</option><option value="ts-ZA">itsonga</option></select>
+							<button type="button" class="translate-report bg-[#1A1F26] text-white px-3 py-2 rounded">Translate</button>
+							<button type="button" class="speak-report bg-[#D95D26] text-white px-3 py-2 rounded">Speak text</button>
+							<button type="button" class="ask-rocky-report bg-[#E76F28] text-white px-3 py-2 rounded">Ask Rocky about this report</button>
+						</div>
+						<p class="report-translation whitespace-normal" role="status" aria-live="polite"></p>
+					</td>
+					<td class="p-3 min-w-[240px]">
+						{% if h.voice_note %}<audio class="w-full" controls preload="none" src="{{ h.voice_note.url }}"></audio><button type="button" class="transcribe-report bg-[#1A1F26] text-white px-3 py-2 rounded mt-2">Convert voice to text</button>{% else %}No voice note{% endif %}
+						<p class="voice-transcript whitespace-normal">{{ h.description }}</p>
+					</td>
+				</tr>
+			{% empty %}
+				<tr><td colspan="5" class="p-8 text-center text-zinc-500">No reports have been submitted.</td></tr>
+			{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</main>
+
+<script>
+function getCookie(name){let v=null;document.cookie.split(';').forEach(c=>{c=c.trim();if(c.startsWith(name+'='))v=decodeURIComponent(c.substring(name.length+1))});return v;}
+
+document.querySelectorAll('button').forEach(btn=>{
+  btn.style.pointerEvents = 'auto'; // FORCE clickable
+  btn.disabled = false;
+});
+
+document.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const text = btn.innerText.toLowerCase();
+  const card = btn.closest('.report-row') || btn.closest('div.border') || btn.parentElement;
+
+  // TRANSLATE
+  if(text.includes('translate')){
+    const reportText = card.querySelector('[data-report-text]')?.innerText || card.innerText.substring(0,200);
+    const lang = card.querySelector('select')?.value || 'zu';
+    btn.innerText = 'Translating...';
+    try{
+      const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(reportText)}&langpair=en|${lang}`);
+      const j = await r.json();
+      let out = card.querySelector('.report-translation');
+      if(!out){ out=document.createElement('div'); out.className='report-translation mt-2 p-2 bg-zinc-800 rounded'; card.appendChild(out); }
+      out.innerText = j.responseData.translatedText;
+    }catch{}
+    btn.innerText = 'Translate';
+  }
+
+  // SPEAK
+  if(text.includes('speak')){
+    const t = card.querySelector('.report-translation')?.innerText || card.querySelector('[data-report-text]')?.innerText || 'Report';
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(t));
+  }
+
+  // CONVERT VOICE
+  if(text.includes('convert voice')){
+    const audio = card.querySelector('audio');
+    if(!audio){ alert('No audio'); return; }
+    btn.innerText='Converting...';
+    try{
+      const blob = await fetch(audio.src).then(r=>r.blob());
+      const fd = new FormData(); fd.append('audio', blob, 'voice.webm');
+      const res = await fetch('/api/transcribe-voice/', {method:'POST', body:fd, headers:{'X-CSRFToken': getCookie('csrftoken')}});
+      const data = await res.json();
+      let out = card.querySelector('.voice-transcript');
+      if(out) out.innerText = data.transcript || data.error;
+    }catch(err){ alert(err.message); }
+    btn.innerText='Convert voice to text';
+  }
+
+  // ASK ROCKY
+  if(text.includes('ask rocky')){
+    const reportText = card.querySelector('[data-report-text]')?.innerText || 'Report';
+    document.getElementById('rockyPanel').style.display='flex';
+    document.getElementById('rockyQuestion').value = 'Explain: ' + reportText;
+    document.getElementById('rockyQuestion').focus();
+  }
+});
+</script>
+{% endblock %}
