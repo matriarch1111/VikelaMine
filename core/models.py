@@ -9,7 +9,6 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     preferred_language = models.CharField(max_length=30, default='English')
     assigned_site = models.ForeignKey('MiningSite', on_delete=models.SET_NULL, null=True, blank=True, related_name='staff')
-    
     def is_worker(self): return self.role == self.WORKER
     def is_supervisor(self): return self.role == self.SUPERVISOR
     def is_admin(self): return self.role == self.ADMIN or self.is_superuser

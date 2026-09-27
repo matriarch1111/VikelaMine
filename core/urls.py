@@ -13,4 +13,4 @@ def report_hazard(r):
     if r.method=='POST': print(r.POST.dict()); return redirect('/reports/')
     return redirect('/')
 def sos_alert(r): return JsonResponse({"ok":1})
-def forgot_password(r); return render(r, 'core/forgot_password.html')
+def forgot_password(r): return render(r, 'core/forgot_password.html')

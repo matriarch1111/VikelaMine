@@ -1,16 +1,12 @@
-"""
-Django settings for config project.
-"""
+"""Django settings for the VikelaMine project."""
 
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 SECRET_KEY = 'django-insecure-uqf=4%q6#9r##9ih^^*w3cj#=ty&7t*!pzkjwxyl-ev$#6h$nn'
 DEBUG = True
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = []
 
-# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -18,11 +14,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',  # your VikelaMine app
+    'dashboard.apps.DashboardConfig',
+    'core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -36,15 +34,15 @@ ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
             ],
         },
     },
@@ -65,44 +63,26 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
 ]
-
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Africa/Johannesburg' # Fixed for Kimberley
 USE_I18N = True
 USE_TZ = True
-
-# Static & Media - THIS FIXES YOUR 404
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # Avoid placing STATIC_ROOT at BASE_DIR / 'static'
-
-# Tells Django where to look for source static files in development
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
-
-# Enable compression and caching (Django 4.2+)
-# Django 4.2+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'core' / 'static']
 STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
     },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
 }
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-# Custom User from core app - VikelaMine
 AUTH_USER_MODEL = 'core.User'
-
-# Email - Fixed (was MAILERS, should be EMAIL_BACKEND)
-# Email - Fixed (was MAILERS, should be EMAIL_BACKEND)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
-# Login URLs - FIXES your panic button 404
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
-STATICFILES_DIRS = [BASE_DIR / 'core' / 'static']
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
