@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
 
 load_dotenv() # loads.env
 
@@ -84,6 +85,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'  # Avoid placing STATIC_ROOT at BASE_DIR 
 # Tells Django where to look for source static files in development
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
+    BASE_DIR / 'core' / 'static',
 ]
 
 # Enable compression and caching (Django 4.2+)
@@ -116,4 +118,20 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@vikelamine.local')
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
-STATICFILES_DIRS = [BASE_DIR / 'core' / 'static']
+
+# Logging configuration for views.py
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'core.views': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
