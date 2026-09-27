@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, JsonResponse
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -8,11 +9,16 @@ from .models import Hazard, MiningSite, PanicAlert, User
 from django.conf import settings
 import uuid
 import json, os
-from django.http import JsonResponse
+import logging
 from django.views.decorators.csrf import csrf_exempt
+from openai import OpenAI
+from dotenv import load_dotenv
+import base64
+import hashlib
+from django.core.cache import cache
 
-
-
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 # =========================
 # PUBLIC PAGES
@@ -43,9 +49,13 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-
-            # After successful login, go directly to Report Hazard
-            return redirect('report_hazard')
+            # Role-based redirect after login
+            if user.is_admin():
+                return redirect('admin_dashboard')
+            elif user.is_supervisor():
+                return redirect('supervisor_dashboard')
+            else:
+                return redirect('report_hazard')
 
         else:
             return render(request, 'core/login.html', {
@@ -54,11 +64,50 @@ def login_view(request):
 
     return render(request, 'core/login.html')
 
+
+def logout_view(request):
+    logout(request)
+    return redirect('home')
+
+
 # =========================
 # MAIN DASHBOARD
 # =========================
 
+@login_required(login_url='login')
 def dashboard(request):
+    hazards = Hazard.objects.select_related('reported_by').order_by('-reported_at')[:100]
+    panic_alerts = PanicAlert.objects.select_related('worker').order_by('-created_at')[:20]
+    return render(request, 'core/dashboard.html', {
+        'hazards': hazards,
+        'open_count': Hazard.objects.exclude(status='resolved').count(),
+        'resolved': Hazard.objects.filter(status='resolved').count(),
+        'sos_count': PanicAlert.objects.filter(resolved=False).count(),
+        'users_count': User.objects.count(),
+        'panic_alerts': panic_alerts,
+    })
+
+
+@login_required(login_url='login')
+def supervisor_dashboard(request):
+    if not (request.user.is_supervisor() or request.user.is_admin()):
+        return redirect('dashboard')
+    hazards = Hazard.objects.select_related('reported_by').order_by('-reported_at')[:100]
+    panic_alerts = PanicAlert.objects.select_related('worker').order_by('-created_at')[:20]
+    return render(request, 'core/dashboard.html', {
+        'hazards': hazards,
+        'open_count': Hazard.objects.exclude(status='resolved').count(),
+        'resolved': Hazard.objects.filter(status='resolved').count(),
+        'sos_count': PanicAlert.objects.filter(resolved=False).count(),
+        'users_count': User.objects.count(),
+        'panic_alerts': panic_alerts,
+    })
+
+
+@login_required(login_url='login')
+def admin_dashboard(request):
+    if not request.user.is_admin():
+        return redirect('dashboard')
     hazards = Hazard.objects.select_related('reported_by').order_by('-reported_at')[:100]
     panic_alerts = PanicAlert.objects.select_related('worker').order_by('-created_at')[:20]
     return render(request, 'core/dashboard.html', {
@@ -75,6 +124,7 @@ def dashboard(request):
 # RECORD
 # =========================
 
+@login_required(login_url='login')
 def report_hazard(request):
 
     if request.method == 'POST':
@@ -118,6 +168,7 @@ def report_hazard(request):
     return render(request, 'core/report_hazard.html')
 
 
+@login_required(login_url='login')
 def reports(request):
     hazards = Hazard.objects.select_related('reported_by').order_by('-reported_at')
     return render(request, 'core/my_reports.html', {'hazards': hazards})
@@ -177,7 +228,9 @@ def nearby_danger(request):
     return render(request, 'core/nearby_danger.html')
 
 def check_nearby_hazards(request):
-    from django.http import JsonResponse
+    lat = request.GET.get('lat')
+    lng = request.GET.get('lng')
+    # for now return empty - you can add real logic later
     return JsonResponse({"hazards": []})
 
 # =========================
@@ -265,117 +318,6 @@ def sos_alert(request):
         'notified': notified,
     }, status=201)
 
-import os
-from django.http import JsonResponse
-from openai import OpenAI
-
-def translate_page(request):
-    if not os.getenv("OPENAI_API_KEY"):
-        return JsonResponse({"error": "Site-wide translation needs OPENAI_API_KEY configuration."}, status=500)
-
-    client = OpenAI()
-    data = json.loads(request.body)
-    lang = data.get("language")
-    html = data.get("html")[:15000] # limit
-
-    resp = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role":"system","content": f"Translate the visible text of this HTML to {lang}. Keep HTML tags."},
-            {"role":"user","content": html}
-        ]
-    )
-    return JsonResponse({"translated_html": resp.choices[0].message.content})
-
-
-# =========================
-# OTHER PAGES
-# =========================
-
-def documents(request):
-    return render(request, 'core/documents.html')
-
-
-def faq(request):
-    return render(request, 'core/faq.html')
-
-
-def pricing(request):
-    return render(request, 'core/pricing.html')
-
-
-def contact(request):
-    return render(request, 'core/faq.html')
-
-
-def settings_page(request):
-    return render(request, 'core/admin_dashboard.html', {
-        'users': [],
-        'sites': [],
-    })
-
-def admin_users(request):
-    return render(request, 'core/admin_users.html', {
-        'users': [],
-    })
-
-
-def admin_sites(request):
-    return render(request, 'core/admin_sites.html', {
-        'sites': [],
-    })
-
-def forgot_password(request):
-    return render(request, 'core/forgot_password.html', {
-        'sites': [],
-    })
-
-from django.http import JsonResponse
-
-def check_nearby_hazards(request):
-    lat = request.GET.get('lat')
-    lng = request.GET.get('lng')
-    # for now return empty - you can add real logic later
-    return JsonResponse({"hazards": []})
-
-def settings_view(request):
-    return render(request, 'core/settings.html')
-
-def redirect_ai_assistance(request):
-    return redirect('report_hazard')
-
-def service_worker(request):
-    script_path = settings.BASE_DIR / 'core' / 'static' / 'js' / 'sw.js'
-    response = HttpResponse(script_path.read_text(encoding='utf-8'), content_type='application/javascript')
-    response['Service-Worker-Allowed'] = '/'
-    return response
-
-import os
-import base64
-import hashlib
-import json
-import logging
-
-from django.shortcuts import render
-from django.conf import settings
-from django.http import HttpResponse, JsonResponse
-from django.core.cache import cache
-from django.views.decorators.csrf import csrf_exempt
-
-from openai import OpenAI
-from dotenv import load_dotenv
-
-load_dotenv()
-logger = logging.getLogger(__name__)
-
-def index(request):
-    return render(request, 'core/index.html')
-
-def login_view(request):
-    return render(request, 'core/login.html')
-
-def register_view(request):
-    return render(request, 'core/register.html')
 
 HAZARDS_TRANSLATED = {
     "en-US": {
@@ -799,3 +741,56 @@ def translate_page_api(request):
         return JsonResponse({"translated_html": r.choices[0].message.content})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+# Other placeholder views
+def index(request):
+    return render(request, 'core/index.html')
+
+def register_view(request):
+    return render(request, 'core/register.html')
+
+def documents(request):
+    return render(request, 'core/documents.html')
+
+def faq(request):
+    return render(request, 'core/faq.html')
+
+def pricing(request):
+    return render(request, 'core/pricing.html')
+
+def contact(request):
+    return render(request, 'core/faq.html')
+
+def settings_page(request):
+    return render(request, 'core/admin_dashboard.html', {
+        'users': [],
+        'sites': [],
+    })
+
+def admin_users(request):
+    return render(request, 'core/admin_users.html', {
+        'users': [],
+    })
+
+def admin_sites(request):
+    return render(request, 'core/admin_sites.html', {
+        'sites': [],
+    })
+
+def forgot_password(request):
+    return render(request, 'core/forgot_password.html', {
+        'sites': [],
+    })
+
+def settings_view(request):
+    return render(request, 'core/settings.html')
+
+def redirect_ai_assistance(request):
+    return redirect('report_hazard')
+
+def service_worker(request):
+    script_path = settings.BASE_DIR / 'core' / 'static' / 'js' / 'sw.js'
+    response = HttpResponse(script_path.read_text(encoding='utf-8'), content_type='application/javascript')
+    response['Service-Worker-Allowed'] = '/'
+    return response
