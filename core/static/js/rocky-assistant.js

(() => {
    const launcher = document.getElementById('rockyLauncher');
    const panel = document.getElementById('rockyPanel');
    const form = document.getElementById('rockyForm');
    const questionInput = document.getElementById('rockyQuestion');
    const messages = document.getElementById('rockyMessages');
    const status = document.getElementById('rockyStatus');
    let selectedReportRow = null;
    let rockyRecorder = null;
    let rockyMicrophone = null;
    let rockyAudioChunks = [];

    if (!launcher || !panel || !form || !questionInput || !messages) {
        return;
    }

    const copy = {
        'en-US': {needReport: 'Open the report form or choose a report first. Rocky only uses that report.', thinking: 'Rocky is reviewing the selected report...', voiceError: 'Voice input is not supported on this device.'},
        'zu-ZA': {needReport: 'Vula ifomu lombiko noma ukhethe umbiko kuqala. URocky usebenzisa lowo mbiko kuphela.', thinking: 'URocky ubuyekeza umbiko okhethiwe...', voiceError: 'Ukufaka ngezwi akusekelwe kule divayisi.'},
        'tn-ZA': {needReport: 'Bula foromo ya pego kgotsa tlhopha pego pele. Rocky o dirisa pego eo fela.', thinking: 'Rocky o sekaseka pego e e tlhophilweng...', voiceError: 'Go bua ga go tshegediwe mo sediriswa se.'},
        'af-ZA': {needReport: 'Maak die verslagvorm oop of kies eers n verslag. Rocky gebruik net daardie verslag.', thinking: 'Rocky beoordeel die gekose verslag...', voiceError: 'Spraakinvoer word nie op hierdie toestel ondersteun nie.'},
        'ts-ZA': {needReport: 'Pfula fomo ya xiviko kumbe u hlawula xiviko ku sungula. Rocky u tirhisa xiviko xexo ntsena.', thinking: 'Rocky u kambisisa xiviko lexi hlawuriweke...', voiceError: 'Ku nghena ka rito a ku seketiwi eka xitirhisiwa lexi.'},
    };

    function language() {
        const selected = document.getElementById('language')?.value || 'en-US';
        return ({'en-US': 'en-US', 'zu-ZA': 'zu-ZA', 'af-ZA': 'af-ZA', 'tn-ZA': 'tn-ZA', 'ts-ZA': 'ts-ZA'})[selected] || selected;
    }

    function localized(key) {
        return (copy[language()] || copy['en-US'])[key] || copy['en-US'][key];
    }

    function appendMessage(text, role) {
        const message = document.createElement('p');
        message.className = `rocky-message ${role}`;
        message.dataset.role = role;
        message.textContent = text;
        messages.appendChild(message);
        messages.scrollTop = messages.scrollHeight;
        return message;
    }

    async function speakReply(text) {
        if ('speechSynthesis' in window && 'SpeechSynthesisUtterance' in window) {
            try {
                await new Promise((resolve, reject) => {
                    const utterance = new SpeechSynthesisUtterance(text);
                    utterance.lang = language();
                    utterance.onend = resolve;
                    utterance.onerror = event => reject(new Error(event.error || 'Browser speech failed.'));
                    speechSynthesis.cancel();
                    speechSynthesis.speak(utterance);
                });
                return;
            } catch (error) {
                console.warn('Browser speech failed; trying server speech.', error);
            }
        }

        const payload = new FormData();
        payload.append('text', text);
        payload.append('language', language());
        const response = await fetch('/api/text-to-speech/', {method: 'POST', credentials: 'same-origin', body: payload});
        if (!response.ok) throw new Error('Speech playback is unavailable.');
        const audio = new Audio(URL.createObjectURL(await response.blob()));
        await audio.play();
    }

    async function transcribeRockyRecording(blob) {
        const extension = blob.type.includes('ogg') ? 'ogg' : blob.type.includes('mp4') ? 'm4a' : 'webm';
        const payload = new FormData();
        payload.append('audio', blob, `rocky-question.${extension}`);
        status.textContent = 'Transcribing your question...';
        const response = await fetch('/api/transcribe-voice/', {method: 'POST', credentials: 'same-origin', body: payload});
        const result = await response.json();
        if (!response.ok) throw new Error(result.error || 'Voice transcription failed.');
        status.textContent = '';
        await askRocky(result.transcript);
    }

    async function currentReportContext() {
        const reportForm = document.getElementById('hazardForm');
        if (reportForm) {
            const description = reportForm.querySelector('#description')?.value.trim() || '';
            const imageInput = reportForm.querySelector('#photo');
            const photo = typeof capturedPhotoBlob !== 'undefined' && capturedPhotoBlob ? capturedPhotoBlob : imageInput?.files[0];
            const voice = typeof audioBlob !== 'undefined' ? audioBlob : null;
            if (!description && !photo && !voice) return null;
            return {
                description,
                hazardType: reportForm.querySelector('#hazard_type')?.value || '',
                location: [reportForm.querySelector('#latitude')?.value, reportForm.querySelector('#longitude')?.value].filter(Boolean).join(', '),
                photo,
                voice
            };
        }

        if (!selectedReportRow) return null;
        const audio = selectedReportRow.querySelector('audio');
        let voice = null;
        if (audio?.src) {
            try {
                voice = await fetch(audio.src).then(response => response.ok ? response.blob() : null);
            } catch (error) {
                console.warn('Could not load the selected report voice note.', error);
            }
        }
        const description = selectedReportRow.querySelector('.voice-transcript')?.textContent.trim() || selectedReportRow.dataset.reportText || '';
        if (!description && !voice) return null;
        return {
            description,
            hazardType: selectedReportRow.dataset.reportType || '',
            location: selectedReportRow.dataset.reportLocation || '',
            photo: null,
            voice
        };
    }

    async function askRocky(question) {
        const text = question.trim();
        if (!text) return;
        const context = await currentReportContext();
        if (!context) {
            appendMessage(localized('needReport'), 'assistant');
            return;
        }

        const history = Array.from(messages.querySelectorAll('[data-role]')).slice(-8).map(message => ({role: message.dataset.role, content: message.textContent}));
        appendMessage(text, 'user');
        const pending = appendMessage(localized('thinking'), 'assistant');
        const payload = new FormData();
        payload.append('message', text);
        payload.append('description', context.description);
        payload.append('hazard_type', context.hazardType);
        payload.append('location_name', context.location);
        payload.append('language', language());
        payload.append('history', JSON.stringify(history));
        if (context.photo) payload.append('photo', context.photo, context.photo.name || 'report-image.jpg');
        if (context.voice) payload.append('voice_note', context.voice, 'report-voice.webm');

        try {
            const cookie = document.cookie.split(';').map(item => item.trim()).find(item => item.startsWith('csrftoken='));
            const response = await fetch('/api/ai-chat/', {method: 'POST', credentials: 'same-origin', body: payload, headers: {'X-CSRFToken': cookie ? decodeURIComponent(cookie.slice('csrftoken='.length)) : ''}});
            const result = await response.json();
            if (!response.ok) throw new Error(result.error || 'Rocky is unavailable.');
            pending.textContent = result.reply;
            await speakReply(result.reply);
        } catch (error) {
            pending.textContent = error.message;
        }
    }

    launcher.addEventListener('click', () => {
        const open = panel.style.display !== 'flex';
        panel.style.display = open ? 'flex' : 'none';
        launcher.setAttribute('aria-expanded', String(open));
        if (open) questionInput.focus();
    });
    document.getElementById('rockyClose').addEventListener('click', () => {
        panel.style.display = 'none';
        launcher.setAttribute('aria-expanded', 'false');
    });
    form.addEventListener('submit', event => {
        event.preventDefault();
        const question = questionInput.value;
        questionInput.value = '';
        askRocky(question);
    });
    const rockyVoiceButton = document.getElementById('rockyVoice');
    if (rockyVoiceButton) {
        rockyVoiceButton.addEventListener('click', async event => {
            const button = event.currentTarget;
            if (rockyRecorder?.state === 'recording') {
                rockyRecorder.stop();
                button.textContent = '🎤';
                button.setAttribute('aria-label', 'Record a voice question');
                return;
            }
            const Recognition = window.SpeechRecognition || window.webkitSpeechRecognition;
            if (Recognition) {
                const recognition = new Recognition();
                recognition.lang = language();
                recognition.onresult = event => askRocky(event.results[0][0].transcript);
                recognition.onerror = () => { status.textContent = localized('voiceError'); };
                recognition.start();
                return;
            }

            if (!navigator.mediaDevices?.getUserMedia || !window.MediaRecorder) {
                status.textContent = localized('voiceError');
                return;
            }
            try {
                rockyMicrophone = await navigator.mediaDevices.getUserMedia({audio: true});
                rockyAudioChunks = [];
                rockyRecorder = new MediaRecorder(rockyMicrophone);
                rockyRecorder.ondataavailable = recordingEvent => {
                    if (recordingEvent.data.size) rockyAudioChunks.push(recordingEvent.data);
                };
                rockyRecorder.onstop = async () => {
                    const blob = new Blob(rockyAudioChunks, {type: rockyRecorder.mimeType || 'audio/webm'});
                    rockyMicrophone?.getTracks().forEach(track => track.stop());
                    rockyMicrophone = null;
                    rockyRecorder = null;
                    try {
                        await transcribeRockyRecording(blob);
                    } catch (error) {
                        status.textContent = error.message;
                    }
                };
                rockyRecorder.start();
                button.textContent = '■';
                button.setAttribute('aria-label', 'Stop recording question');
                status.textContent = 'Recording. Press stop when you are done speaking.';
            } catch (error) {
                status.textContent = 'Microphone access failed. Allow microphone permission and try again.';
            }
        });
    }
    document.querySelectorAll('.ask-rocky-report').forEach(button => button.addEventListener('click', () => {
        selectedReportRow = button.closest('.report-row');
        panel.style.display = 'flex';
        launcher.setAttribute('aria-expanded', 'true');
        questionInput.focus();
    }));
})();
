@@ -1,0 +1,129 @@
+from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.core.mail import send_mail
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+from .models import Hazard, MiningSite, PanicAlert, User
+from django.conf import settings
+import uuid
+import json, os
+import logging
+from django.views.decorators.csrf import csrf_exempt
+from openai import OpenAI
+from dotenv import load_dotenv
+import base64
+import hashlib
+from django.core.cache import cache
+
+load_dotenv()
+logger = logging.getLogger(__name__)
+
+
+def role_redirect(user):
+    if user.is_admin():
+        return redirect('admin_dashboard')
+    if user.is_supervisor():
+        return redirect('supervisor_dashboard')
+    return redirect('dashboard')
+
+
+# =========================
+# PUBLIC PAGES
+# =========================
+
+def home(request):
+    return render(request, 'core/landing.html')
+
+
+def features(request):
+    return render(request, 'core/features.html')
+
+
+def how_it_works(request):
+    return render(request, 'core/how_it_works.html')
+
+
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return role_redirect(user)
+        return render(request, 'core/login.html', {'error': 'Invalid username or password.'})
+
+    return render(request, 'core/login.html')
+
+
+def logout_view(request):
+    logout(request)
+    return redirect('home')
+
+
+# =========================
+# MAIN DASHBOARD
+# =========================
+
+@login_required(login_url='login')
+def dashboard(request):
+    if not request.user.is_worker():
+        if request.user.is_supervisor():
+            return redirect('supervisor_dashboard')
+        if request.user.is_admin():
+            return redirect('admin_dashboard')
+        return redirect('login')
+    hazards = Hazard.objects.select_related('reported_by').order_by('-reported_at')[:100]
+    panic_alerts = PanicAlert.objects.select_related('worker').order_by('-created_at')[:20]
+    return render(request, 'core/dashboard.html', {
+        'hazards': hazards,
+        'open_count': Hazard.objects.exclude(status='resolved').count(),
+        'resolved': Hazard.objects.filter(status='resolved').count(),
+        'sos_count': PanicAlert.objects.filter(resolved=False).count(),
+        'users_count': User.objects.count(),
+        'panic_alerts': panic_alerts,
+    })
+
+
+@login_required(login_url='login')
+def supervisor_dashboard(request):
+    if not (request.user.is_supervisor() or request.user.is_admin()):
+        if request.user.is_worker():
+            return redirect('dashboard')
+        return redirect('login')
+    hazards = Hazard.objects.select_related('reported_by').order_by('-reported_at')[:100]
+    panic_alerts = PanicAlert.objects.select_related('worker').order_by('-created_at')[:20]
+    return render(request, 'core/dashboard.html', {
+        'hazards': hazards,
+        'open_count': Hazard.objects.exclude(status='resolved').count(),
+        'resolved': Hazard.objects.filter(status='resolved').count(),
+        'sos_count': PanicAlert.objects.filter(resolved=False).count(),
+        'users_count': User.objects.count(),
+        'panic_alerts': panic_alerts,
+    })
+
+
+@login_required(login_url='login')
+def admin_dashboard(request):
+    if not request.user.is_admin():
+        if request.user.is_supervisor():
+            return redirect('supervisor_dashboard')
+        if request.user.is_worker():
+            return redirect('dashboard')
+        return redirect('login')
+    hazards = Hazard.objects.select_related('reported_by').order_by('-reported_at')[:100]
+    panic_alerts = PanicAlert.objects.select_related('worker').order_by('-created_at')[:20]
+    return render(request, 'core/dashboard.html', {
+        'hazards': hazards,
+        'open_count': Hazard.objects.exclude(status='resolved').count(),
+        'resolved': Hazard.objects.filter(status='resolved').count(),
+        'sos_count': PanicAlert.objects.filter(resolved=False).count(),
+        'users_count': User.objects.count(),
+        'panic_alerts': panic_alerts,
+    })
+
+
+# ... kept existing rest of file unchanged

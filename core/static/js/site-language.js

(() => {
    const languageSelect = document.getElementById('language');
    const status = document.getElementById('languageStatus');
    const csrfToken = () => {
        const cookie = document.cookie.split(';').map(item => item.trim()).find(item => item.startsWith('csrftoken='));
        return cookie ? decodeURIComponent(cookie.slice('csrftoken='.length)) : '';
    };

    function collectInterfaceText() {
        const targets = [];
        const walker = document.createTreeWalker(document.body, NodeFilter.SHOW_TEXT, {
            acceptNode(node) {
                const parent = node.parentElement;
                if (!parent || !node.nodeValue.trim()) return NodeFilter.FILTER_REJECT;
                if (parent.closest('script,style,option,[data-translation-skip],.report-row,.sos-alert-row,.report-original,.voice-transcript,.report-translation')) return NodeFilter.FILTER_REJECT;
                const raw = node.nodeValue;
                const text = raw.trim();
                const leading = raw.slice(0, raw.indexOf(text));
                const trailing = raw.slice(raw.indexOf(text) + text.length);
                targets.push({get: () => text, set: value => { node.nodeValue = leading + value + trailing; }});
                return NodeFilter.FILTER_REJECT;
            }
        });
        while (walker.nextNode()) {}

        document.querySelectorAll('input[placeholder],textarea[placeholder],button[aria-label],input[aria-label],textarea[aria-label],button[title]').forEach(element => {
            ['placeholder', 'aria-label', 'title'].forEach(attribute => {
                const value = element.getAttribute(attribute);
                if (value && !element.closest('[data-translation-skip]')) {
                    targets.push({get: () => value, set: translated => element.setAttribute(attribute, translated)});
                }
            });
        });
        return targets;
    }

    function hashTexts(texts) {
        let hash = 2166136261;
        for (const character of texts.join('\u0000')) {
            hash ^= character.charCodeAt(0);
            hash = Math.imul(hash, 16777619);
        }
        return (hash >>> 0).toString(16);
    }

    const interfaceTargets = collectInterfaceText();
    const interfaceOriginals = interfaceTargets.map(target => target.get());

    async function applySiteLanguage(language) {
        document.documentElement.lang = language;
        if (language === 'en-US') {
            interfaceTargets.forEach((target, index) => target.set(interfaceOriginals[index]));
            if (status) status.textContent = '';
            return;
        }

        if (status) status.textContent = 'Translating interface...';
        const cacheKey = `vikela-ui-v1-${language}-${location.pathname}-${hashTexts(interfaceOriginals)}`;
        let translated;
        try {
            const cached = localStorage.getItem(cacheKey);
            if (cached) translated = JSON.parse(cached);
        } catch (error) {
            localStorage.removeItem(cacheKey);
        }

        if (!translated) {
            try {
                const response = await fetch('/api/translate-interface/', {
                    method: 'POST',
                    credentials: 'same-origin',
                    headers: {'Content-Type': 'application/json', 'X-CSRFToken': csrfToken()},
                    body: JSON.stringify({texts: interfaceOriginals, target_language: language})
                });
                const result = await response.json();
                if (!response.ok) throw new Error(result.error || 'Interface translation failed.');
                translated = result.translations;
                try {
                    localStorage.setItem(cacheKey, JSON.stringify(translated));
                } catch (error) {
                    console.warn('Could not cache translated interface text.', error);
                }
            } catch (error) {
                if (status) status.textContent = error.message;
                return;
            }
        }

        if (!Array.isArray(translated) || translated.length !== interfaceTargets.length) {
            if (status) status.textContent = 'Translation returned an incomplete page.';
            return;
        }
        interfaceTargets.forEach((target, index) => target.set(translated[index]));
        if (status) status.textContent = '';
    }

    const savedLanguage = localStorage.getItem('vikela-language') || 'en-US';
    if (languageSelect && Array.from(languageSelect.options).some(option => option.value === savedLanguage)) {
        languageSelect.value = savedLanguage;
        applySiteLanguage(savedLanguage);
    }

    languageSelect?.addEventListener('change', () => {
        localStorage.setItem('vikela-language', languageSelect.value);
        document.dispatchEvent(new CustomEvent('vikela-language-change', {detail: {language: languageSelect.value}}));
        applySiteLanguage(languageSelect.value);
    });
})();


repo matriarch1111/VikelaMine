@@ -1,0 +1,152 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VikelaMine</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="{% static 'css/Vikelamine.css' %}">
+<style>
+:root{--red:#E76F28;--bg:#1A1F26;--panel:#232A34;--panel2:#2A323D;--line:#2E353F}
+body{background:var(--bg);font-family:ui-sans-serif,system-ui,sans-serif}
+#rockyLauncher{position:fixed;right:20px;bottom:20px;z-index:999;min-width:58px;min-height:58px;border-radius:50%;border:1px solid var(--line);background:var(--red);color:#fff;font-size:28px;box-shadow:0 10px 30px rgba(231,111,40,.35)}
+#rockyPanel{position:fixed;right:16px;bottom:92px;z-index:998;width:min(370px,calc(100vw - 32px));height:min(520px,calc(100dvh - 112px));display:none;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 25px 60px rgba(0,0,0,.45)}
+#rockyMessages{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:12px}
+.rocky-message{max-width:88%;padding:9px 12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.rocky-message.assistant{align-self:flex-start;background:var(--panel2)}
+.rocky-message.user{align-self:flex-end;background:var(--red)}
+</style>
+</head>
+<body class="text-white">
+
+<header class="sticky top-0 z-50 flex flex-col gap-3 bg-black px-5 py-4 text-white shadow-lg md:flex-row md:flex-wrap md:items-center md:justify-between md:px-8 md:py-5">
+    <div class="flex w-full items-center justify-between md:w-auto">
+        <a href="{% url 'home' %}" class="text-xl font-bold md:text-2xl">Vike<span class="text-red-600">la</span>Mine</a>
+        <button id="menu-toggle" type="button" class="inline-flex min-h-11 items-center gap-2 rounded border border-white/20 px-3 text-sm font-semibold hover:bg-white/10 md:hidden" aria-expanded="false">Menu</button>
+    </div>
+    <div id="site-navigation" class="hidden w-full border-t border-white/15 pt-3 md:flex md:flex-1 md:flex-wrap md:items-center md:justify-between md:gap-3 md:border-0 md:pt-0">
+        <nav class="flex flex-col gap-1 text-base font-medium md:flex-row md:flex-wrap md:items-center md:gap-3 lg:gap-5">
+            <a href="{% url 'home' %}" class="rounded px-3 py-3 hover:bg-white/10 hover:text-red-400 md:px-1 md:py-2">Home</a>
+            <a href="{% url 'reports' %}" class="rounded px-3 py-3 hover:bg-white/10 hover:text-red-400 md:px-1 md:py-2">Reports</a>
+            <a href="{% url 'near_danger' %}" class="rounded px-3 py-3 hover:bg-white/10 hover:text-red-400 md:px-1 md:py-2">Near Danger</a>
+            <a href="{% url 'maps' %}" class="rounded px-3 py-3 hover:bg-white/10 hover:text-red-400 md:px-1 md:py-2">Maps</a>
+            <a href="{% url 'contact' %}" class="rounded px-3 py-3 hover:bg-white/10 hover:text-red-400 md:px-1 md:py-2">Contact Safety</a>
+        </nav>
+        <div class="mt-3 flex flex-col gap-3 md:mt-0 md:flex-row md:items-center md:gap-3">
+            <select id="language" class="w-full rounded bg-zinc-800 px-3 py-2 md:w-auto" aria-label="Choose website language">
+                <option value="en-US">English</option>
+                <option value="zu-ZA">isiZulu</option>
+                <option value="af-ZA">Afrikaans</option>
+                <option value="tn-ZA">Setswana</option>
+                <option value="ts-ZA">Xitsonga</option>
+            </select>
+            <span id="languageStatus" class="text-xs text-zinc-300"></span>
+            <button type="button" onclick="sendSOS(this)" class="min-h-11 rounded-full bg-red-600 px-5 py-2 text-sm font-bold">SOS</button>
+            <a href="{% url 'dashboard' %}" class="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-bold text-black">Dashboard</a>
+        </div>
+    </div>
+</header>
+
+<div class="max-w-[1100px] mx-auto px-6 py-6">
+{% block content %}{% endblock %}
+</div>
+
+<button id="rockyLauncher" type="button" aria-label="Rocky Assistant">
+  <svg width="40" height="40" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="rockBody" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#9a9a9a"/>
+        <stop offset="45%" stop-color="#6b6b6b"/>
+        <stop offset="100%" stop-color="#333333"/>
+      </linearGradient>
+      <linearGradient id="rockShine" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="M10 100 L20 60 L50 30 L100 24 L140 55 L150 95 L125 130 L45 135 Z" fill="url(#rockBody)" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M20 60 L50 30 L100 24 L82 70 Z" fill="url(#rockShine)"/>
+    <path d="M45 135 L70 95 L100 24" stroke="#1a1a1a" stroke-width="0.5" fill="none" opacity="0.35"/>
+    <path d="M20 60 L60 75 L45 135" stroke="#1a1a1a" stroke-width="0.5" fill="none" opacity="0.25"/>
+    <circle cx="62" cy="72" r="10" fill="#ffffff" stroke="#1a1a1a" stroke-width="0.5"/>
+    <circle cx="98" cy="70" r="10" fill="#ffffff" stroke="#1a1a1a" stroke-width="0.5"/>
+    <circle cx="64" cy="74" r="4" fill="#1a1a1a"/>
+    <circle cx="100" cy="72" r="4" fill="#1a1a1a"/>
+    <path d="M55 95 Q80 115 108 92" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </svg>
+</button>
+
+<section id="rockyPanel" role="dialog" aria-label="Rocky assistant">
+    <header class="flex items-center gap-3 border-b border-zinc-700 bg-[#151A21] p-3">
+        <strong>Rocky</strong><span class="text-xs text-zinc-400">Report assistant</span>
+        <button id="rockyClose" type="button" class="ml-auto min-h-9 min-w-9 rounded hover:bg-white/10">✕</button>
+    </header>
+    <div id="rockyMessages"><p class="rocky-message assistant">Share or select a report first.</p></div>
+    <form id="rockyForm" class="flex gap-2 border-t border-zinc-700 p-2">
+        <input id="rockyQuestion" class="flex-1 rounded bg-zinc-800 px-3 py-2 text-sm text-white" placeholder="Ask about selected report">
+        <button id="rockySend" type="submit" class="rounded bg-[#E76F28] px-3 py-2 text-sm font-bold">Send</button>
+    </form>
+    <p id="rockyStatus" class="px-3 pb-2 text-xs text-zinc-400"></p>
+</section>
+
+<footer class="border-t border-zinc-800 p-10 text-center text-xs text-zinc-400 bg-[#151A21] mt-10">© 2026 VikelaMine</footer>
+
+<script>
+const menuToggle=document.getElementById("menu-toggle");
+const siteNavigation=document.getElementById("site-navigation");
+menuToggle?.addEventListener("click",()=>{
+  const expanded=menuToggle.getAttribute("aria-expanded")==="true";
+  menuToggle.setAttribute("aria-expanded",String(!expanded));
+  siteNavigation?.classList.toggle("hidden", expanded);
+});
+
+function getCookie(name){
+  let value=null;
+  document.cookie.split(';').forEach(cookie => {
+    const trimmed=cookie.trim();
+    if (trimmed.startsWith(name + '=')) {
+      value=decodeURIComponent(trimmed.substring(name.length + 1));
+    }
+  });
+  return value;
+}
+
+async function sendSOS(button){
+  if(!confirm("EMERGENCY SOS - Send alert?")) return;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Sending...";
+  let latitude = null;
+  let longitude = null;
+  if (navigator.geolocation) {
+    try {
+      const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
+      latitude = position.coords.latitude;
+      longitude = position.coords.longitude;
+    } catch (error) {
+      console.warn('Location unavailable for SOS request.', error);
+    }
+  }
+  try {
+    const response = await fetch('{% url "sos_alert" %}', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') || '' },
+      body: JSON.stringify({ latitude, longitude, note: 'Emergency SOS from VikelaMine website' })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'SOS request failed.');
+    alert(result.ok ? 'SOS sent successfully.' : 'SOS failed to send.');
+  } catch (error) {
+    alert(error.message || 'SOS request failed.');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+</script>
+<script src="{% static 'js/site-language.js' %}"></script>
+<script src="{% static 'js/rocky-assistant.js' %}"></script>
+</body>
+</html>
